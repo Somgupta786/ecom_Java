@@ -1,0 +1,47 @@
+package com.ecommerce.lite.controller;
+
+import com.ecommerce.lite.dto.*;
+import com.ecommerce.lite.model.User;
+import com.ecommerce.lite.repository.UserRepository;
+import com.ecommerce.lite.service.AuthService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+import java.security.Principal;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthService authService;
+    private final UserRepository userRepository;
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authService.register(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenRefreshResponse> refresh(@Valid @RequestBody TokenRefreshRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getProfile(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("{ \"error\": \"Unauthorized\" }");
+        }
+        User user = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return ResponseEntity.ok(user);
+    }
+}

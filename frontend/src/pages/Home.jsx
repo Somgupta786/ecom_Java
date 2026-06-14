@@ -1,0 +1,207 @@
+import React, { useState, useEffect } from 'react';
+import ProductCard from '../components/ProductCard';
+import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const API_BASE = 'http://localhost:8080/api';
+
+export default function Home({ searchFilter }) {
+    const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [recommendations, setRecommendations] = useState([]);
+    
+    // Pagination & Sorting state
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [sortBy, setSortBy] = useState('id');
+    const [dir, setDir] = useState('desc');
+    const [loading, setLoading] = useState(true);
+
+    // Fetch categories on mount
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/products/categories`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setCategories(data);
+                }
+            } catch (err) {
+                console.error('Error fetching categories', err);
+            }
+        };
+
+        const fetchRecommendations = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/products/recommendations`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setRecommendations(data);
+                }
+            } catch (err) {
+                console.error('Error fetching recommendations', err);
+            }
+        };
+
+        fetchCategories();
+        fetchRecommendations();
+    }, []);
+
+    // Fetch products when category, search, page, or sort changes
+    useEffect(() => {
+        const fetchProducts = async () => {
+            setLoading(true);
+            try {
+                let url = `${API_BASE}/products?page=${page}&size=6&sortBy=${sortBy}&direction=${dir}`;
+                if (selectedCategory) {
+                    url += `&categoryId=${selectedCategory}`;
+                }
+                if (searchFilter) {
+                    url += `&search=${encodeURIComponent(searchFilter)}`;
+                }
+                
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    setProducts(data.content || []);
+                    setTotalPages(data.totalPages || 0);
+                }
+            } catch (err) {
+                console.error('Error fetching products', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProducts();
+    }, [selectedCategory, searchFilter, page, sortBy, dir]);
+
+    // Reset page on filter changes
+    useEffect(() => {
+        setPage(0);
+    }, [selectedCategory, searchFilter]);
+
+    const handleCategoryClick = (categoryId) => {
+        setSelectedCategory(prev => prev === categoryId ? null : categoryId);
+    };
+
+    return (
+        <div className="home-container">
+            {/* Hero Banner */}
+            <div className="hero">
+                <h1 className="hero-title">Experience Premium Aesthetics</h1>
+                <p className="hero-subtitle">
+                    Discover E-Commerce Lite: A state-of-the-art catalog with high-fidelity sound, designer apparel, and handcrafted home accessories.
+                </p>
+                <div>
+                    <button className="btn btn-primary" onClick={() => setSelectedCategory(null)}>
+                        Shop Now
+                    </button>
+                </div>
+            </div>
+
+            {/* Recommendations Section */}
+            {recommendations.length > 0 && (
+                <div style={{ marginBottom: '48px' }}>
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '22px', marginBottom: '20px' }}>
+                        <Sparkles size={20} color="var(--accent)" />
+                        <span>Recommended for You</span>
+                    </h2>
+                    <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+                        {recommendations.map(prod => (
+                            <ProductCard key={prod.id} product={prod} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Main Catalog Header */}
+            <div className="products-section-title">
+                <h2>Our Collection</h2>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <select 
+                        value={sortBy} 
+                        onChange={(e) => setSortBy(e.target.value)} 
+                        style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                    >
+                        <option value="id">Latest</option>
+                        <option value="price">Price</option>
+                        <option value="rating">Rating</option>
+                        <option value="name">Alphabetical</option>
+                    </select>
+                    <select 
+                        value={dir} 
+                        onChange={(e) => setDir(e.target.value)} 
+                        style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                    >
+                        <option value="desc">Descending</option>
+                        <option value="asc">Ascending</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* Categories Selector */}
+            <div className="category-container">
+                <button 
+                    onClick={() => setSelectedCategory(null)}
+                    className={`category-bubble ${selectedCategory === null ? 'active' : ''}`}
+                >
+                    All Products
+                </button>
+                {categories.map(cat => (
+                    <button 
+                        key={cat.id}
+                        onClick={() => handleCategoryClick(cat.id)}
+                        className={`category-bubble ${selectedCategory === cat.id ? 'active' : ''}`}
+                    >
+                        {cat.name}
+                    </button>
+                ))}
+            </div>
+
+            {/* Products Listing */}
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '60px 0', fontSize: '18px', color: 'var(--text-muted)' }}>
+                    Loading premium catalog...
+                </div>
+            ) : products.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 0', fontSize: '18px', color: 'var(--text-muted)' }}>
+                    No products found in this category.
+                </div>
+            ) : (
+                <>
+                    <div className="products-grid">
+                        {products.map(product => (
+                            <ProductCard key={product.id} product={product} />
+                        ))}
+                    </div>
+
+                    {/* Pagination Controllers */}
+                    {totalPages > 1 && (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '40px' }}>
+                            <button 
+                                onClick={() => setPage(prev => Math.max(0, prev - 1))}
+                                disabled={page === 0}
+                                className={`btn btn-secondary btn-sm ${page === 0 ? 'btn-disabled' : ''}`}
+                            >
+                                <ChevronLeft size={16} />
+                                <span>Previous</span>
+                            </button>
+                            <span style={{ color: 'var(--text-secondary)' }}>
+                                Page <strong>{page + 1}</strong> of <strong>{totalPages}</strong>
+                            </span>
+                            <button 
+                                onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
+                                disabled={page === totalPages - 1}
+                                className={`btn btn-secondary btn-sm ${page === totalPages - 1 ? 'btn-disabled' : ''}`}
+                            >
+                                <span>Next</span>
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
