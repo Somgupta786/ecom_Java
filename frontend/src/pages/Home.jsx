@@ -4,6 +4,27 @@ import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8080/api';
 
+const slides = [
+    {
+        title: "Experience Premium Aesthetics",
+        subtitle: "Discover E-Commerce Lite: A state-of-the-art catalog with high-fidelity sound, designer apparel, and handcrafted home accessories.",
+        bg: "linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(99, 102, 241, 0.15) 50%, rgba(15, 23, 42, 0.85) 100%), url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200')",
+        actionText: "Shop the Collection"
+    },
+    {
+        title: "High-Fidelity Audio Acoustics",
+        subtitle: "Immersive soundscapes and noise-canceling acoustics. Designed for purists who value premium acoustic accuracy.",
+        bg: "linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(16, 185, 129, 0.15) 50%, rgba(15, 23, 42, 0.85) 100%), url('https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=1200')",
+        actionText: "Explore Sound Systems"
+    },
+    {
+        title: "Handcrafted Living & Comfort",
+        subtitle: "Curate your private spaces with functional designer products, premium textile apparel, and ambient lighting concepts.",
+        bg: "linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(239, 68, 68, 0.15) 50%, rgba(15, 23, 42, 0.85) 100%), url('https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1200')",
+        actionText: "Explore Comfort Design"
+    }
+];
+
 export default function Home({ searchFilter }) {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -85,18 +106,73 @@ export default function Home({ searchFilter }) {
         setSelectedCategory(prev => prev === categoryId ? null : categoryId);
     };
 
+    const [activeSlide, setActiveSlide] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setActiveSlide(prev => (prev + 1) % slides.length);
+        }, 1500);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handlePrevSlide = (e) => {
+        e.stopPropagation();
+        setActiveSlide(prev => (prev - 1 + slides.length) % slides.length);
+    };
+
+    const handleNextSlide = (e) => {
+        e.stopPropagation();
+        setActiveSlide(prev => (prev + 1) % slides.length);
+    };
+
+    const scrollToCollection = () => {
+        const el = document.getElementById('collection-section');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     return (
         <div className="home-container">
-            {/* Hero Banner */}
-            <div className="hero">
-                <h1 className="hero-title">Experience Premium Aesthetics</h1>
-                <p className="hero-subtitle">
-                    Discover E-Commerce Lite: A state-of-the-art catalog with high-fidelity sound, designer apparel, and handcrafted home accessories.
-                </p>
-                <div>
-                    <button className="btn btn-primary" onClick={() => setSelectedCategory(null)}>
-                        Shop Now
-                    </button>
+            {/* Hero Carousel */}
+            <div className="hero-carousel">
+                <div className="carousel-slides">
+                    {slides.map((slide, idx) => (
+                        <div 
+                            key={idx}
+                            className={`carousel-slide ${idx === activeSlide ? 'active' : ''}`}
+                            style={{ backgroundImage: slide.bg }}
+                        >
+                            <div className="carousel-slide-overlay" />
+                            <div className="carousel-slide-content">
+                                <h1 className="hero-title">{slide.title}</h1>
+                                <p className="hero-subtitle">{slide.subtitle}</p>
+                                <button className="btn btn-primary carousel-action-btn" onClick={scrollToCollection}>
+                                    {slide.actionText}
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Left/Right Controls */}
+                <button className="carousel-control prev" onClick={handlePrevSlide} aria-label="Previous Slide">
+                    <ChevronLeft size={24} />
+                </button>
+                <button className="carousel-control next" onClick={handleNextSlide} aria-label="Next Slide">
+                    <ChevronRight size={24} />
+                </button>
+
+                {/* Bottom Dot Indicators */}
+                <div className="carousel-indicators">
+                    {slides.map((_, idx) => (
+                        <button 
+                            key={idx}
+                            className={`carousel-indicator ${idx === activeSlide ? 'active' : ''}`}
+                            onClick={() => setActiveSlide(idx)}
+                            aria-label={`Go to slide ${idx + 1}`}
+                        />
+                    ))}
                 </div>
             </div>
 
@@ -116,7 +192,7 @@ export default function Home({ searchFilter }) {
             )}
 
             {/* Main Catalog Header */}
-            <div className="products-section-title">
+            <div id="collection-section" className="products-section-title">
                 <h2>Our Collection</h2>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <select 

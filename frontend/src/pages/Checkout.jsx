@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, CreditCard, CheckCircle2, Ticket, Award, Printer } from 'lucide-react';
+import { MapPin, CreditCard, CheckCircle2, Ticket, Award, Printer, Package } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8080/api';
 
@@ -10,8 +10,17 @@ export default function Checkout() {
     const { cartItems, getCartTotal, clearCart } = useCart();
     const { token, user, refreshProfile } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
     const [step, setStep] = useState(1); // 1: Shipping, 2: Payment, 3: Success
+    
+    useEffect(() => {
+        const errorParam = searchParams.get('error');
+        if (errorParam) {
+            setCheckoutError(decodeURIComponent(errorParam));
+            setStep(2);
+        }
+    }, [searchParams]);
     
     // Address state
     const [street, setStreet] = useState('');
@@ -133,11 +142,9 @@ export default function Checkout() {
             }
 
             if (paymentMethod === 'COD') {
-                // For COD, the order is complete with PENDING payment status
-                setPlacedOrder(orderData);
                 clearCart();
                 await refreshProfile(); // Refresh loyalty points
-                setStep(3);
+                navigate(`/checkout-success?orderId=${orderData.id}&trackingNumber=${orderData.trackingNumber}`);
             } else {
                 // 2. Configure Razorpay payment options
                 const options = {
@@ -147,35 +154,7 @@ export default function Checkout() {
                     name: 'E-Commerce Lite',
                     description: `Order Payment for #${orderData.id}`,
                     order_id: orderData.razorpayOrderId,
-                    handler: async function (response) {
-                        try {
-                            setPaymentProcessing(true);
-                            // Send payment callback parameters to backend for signature verification
-                            const verifyRes = await fetch(
-                                `${API_BASE}/orders/${orderData.id}/verify-payment?razorpayPaymentId=${response.razorpay_payment_id}&razorpayOrderId=${response.razorpay_order_id}&razorpaySignature=${response.razorpay_signature}`,
-                                {
-                                    method: 'POST',
-                                    headers: {
-                                        'Authorization': `Bearer ${token}`
-                                    }
-                                }
-                            );
-
-                            const paidOrder = await verifyRes.json();
-                            if (!verifyRes.ok) {
-                                throw new Error(paidOrder.message || 'Payment signature verification failed');
-                            }
-
-                            setPlacedOrder(paidOrder);
-                            clearCart();
-                            await refreshProfile(); // Refresh loyalty points
-                            setStep(3);
-                        } catch (err) {
-                            setCheckoutError(err.message || 'Verification failed');
-                        } finally {
-                            setPaymentProcessing(false);
-                        }
-                    },
+                    callback_url: `${API_BASE}/orders/public/verify-payment-redirect/${orderData.id}`,
                     prefill: {
                         name: `${user?.firstName || ''} ${user?.lastName || ''}`,
                         email: user?.email || '',

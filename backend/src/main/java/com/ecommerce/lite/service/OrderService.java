@@ -267,6 +267,12 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    @Transactional(readOnly = true)
+    public Order getOrderByTrackingNumber(String trackingNumber) {
+        return orderRepository.findByTrackingNumberIgnoreCase(trackingNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Order with tracking number " + trackingNumber + " not found"));
+    }
+
     @Transactional
     public Order updateOrderStatus(Long orderId, OrderStatus status) {
         Order order = orderRepository.findById(orderId)

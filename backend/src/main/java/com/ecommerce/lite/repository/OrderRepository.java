@@ -12,6 +12,7 @@ import java.util.List;
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUserIdOrderByOrderDateDesc(Long userId);
     List<Order> findByStatus(OrderStatus status);
+    java.util.Optional<Order> findByTrackingNumberIgnoreCase(String trackingNumber);
 
     @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status = com.ecommerce.lite.model.OrderStatus.PAID OR o.status = com.ecommerce.lite.model.OrderStatus.SHIPPED OR o.status = com.ecommerce.lite.model.OrderStatus.DELIVERED")
     BigDecimal calculateTotalRevenue();

@@ -15,6 +15,8 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
+import CheckoutSuccess from './pages/CheckoutSuccess';
+import OrderTracking from './pages/OrderTracking';
 
 function App() {
   const { user, loading } = useAuth();
@@ -61,6 +63,14 @@ function App() {
               <ProtectedRoute>
                 <Checkout />
               </ProtectedRoute>
+            } />
+            <Route path="/checkout-success" element={
+              <ProtectedRoute>
+                <CheckoutSuccess />
+              </ProtectedRoute>
+            } />
+            <Route path="/order-tracking" element={
+              <OrderTracking />
             } />
             <Route path="/profile" element={
               <ProtectedRoute>

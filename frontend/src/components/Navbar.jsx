@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useTheme } from '../context/ThemeContext';
-import { ShoppingBag, User, Sun, Moon, LogOut, Search, LayoutDashboard, ShoppingCart } from 'lucide-react';
+import { ShoppingBag, User, Sun, Moon, LogOut, Search, LayoutDashboard, ShoppingCart, Compass } from 'lucide-react';
 
 export default function Navbar({ onSearch }) {
     const { user, logout } = useAuth();
@@ -41,6 +41,11 @@ export default function Navbar({ onSearch }) {
                 <button onClick={toggleTheme} className="nav-btn" aria-label="Toggle theme">
                     {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                 </button>
+
+                <Link to="/order-tracking" className="nav-btn">
+                    <Compass size={20} />
+                    <span>Track Order</span>
+                </Link>
 
                 <Link to="/cart" className="nav-btn">
                     <ShoppingCart size={20} />
