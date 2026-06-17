@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { MapPin, CreditCard, CheckCircle2, Ticket, Award, Printer, Package } from 'lucide-react';
+import api from '../services/api';
 
 const API_BASE = 'http://localhost:8080/api';
 
@@ -122,24 +123,14 @@ export default function Checkout() {
 
         try {
             // 1. Place Order in local database (creates pending order and Razorpay order if online)
-            const placeRes = await fetch(`${API_BASE}/orders`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    shippingAddress: finalAddress,
-                    couponCode: appliedCoupon ? appliedCoupon.code : null,
-                    usePoints: usePoints,
-                    paymentMethod: paymentMethod
-                })
+            const placeRes = await api.post('/orders', {
+                shippingAddress: finalAddress,
+                couponCode: appliedCoupon ? appliedCoupon.code : null,
+                usePoints: usePoints,
+                paymentMethod: paymentMethod
             });
 
-            const orderData = await placeRes.json();
-            if (!placeRes.ok) {
-                throw new Error(orderData.message || 'Failed to place order');
-            }
+            const orderData = placeRes.data;
 
             if (paymentMethod === 'COD') {
                 clearCart();

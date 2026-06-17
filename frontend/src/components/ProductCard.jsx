@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, ShoppingCart } from 'lucide-react';
+import { Star, ShoppingCart, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 export default function ProductCard({ product }) {
-    const { addToCart } = useCart();
+    const { addToCart, cartItems } = useCart();
+    const [added, setAdded] = useState(false);
+
+    const cartItem = cartItems?.find(item => item.product.id === product.id);
+    const quantityInCart = cartItem ? cartItem.quantity : 0;
 
     const renderStars = (rating) => {
         const stars = [];
@@ -25,6 +29,8 @@ export default function ProductCard({ product }) {
     const handleQuickAdd = (e) => {
         e.preventDefault(); // prevent navigation to detail page
         addToCart(product, 1);
+        setAdded(true);
+        setTimeout(() => setAdded(false), 2000);
     };
 
     return (
@@ -39,6 +45,13 @@ export default function ProductCard({ product }) {
                     <span>({product.reviewCount || 0})</span>
                 </div>
 
+                {quantityInCart > 0 && (
+                    <div className="product-card-quantity-badge">
+                        <span className="quantity-dot" />
+                        <span>{quantityInCart} selected in cart</span>
+                    </div>
+                )}
+
                 <div className="product-card-footer">
                     <span className="product-card-price">${product.price.toFixed(2)}</span>
                     {product.stock <= 0 ? (
@@ -46,11 +59,26 @@ export default function ProductCard({ product }) {
                     ) : (
                         <button 
                             onClick={handleQuickAdd} 
-                            className="btn btn-primary btn-sm"
-                            aria-label="Add to cart"
+                            className={`btn ${added ? 'btn-success' : 'btn-primary'} btn-sm`}
+                            style={{ 
+                                transition: 'var(--transition)',
+                                backgroundColor: added ? 'var(--success)' : undefined, 
+                                borderColor: added ? 'var(--success)' : undefined
+                            }}
+                            aria-label={added ? "Added to cart" : "Add to cart"}
+                            disabled={added}
                         >
-                            <ShoppingCart size={15} />
-                            <span>Add</span>
+                            {added ? (
+                                <>
+                                    <Check size={15} />
+                                    <span>Added</span>
+                                </>
+                            ) : (
+                                <>
+                                    <ShoppingCart size={15} />
+                                    <span>Add</span>
+                                </>
+                            )}
                         </button>
                     )}
                 </div>

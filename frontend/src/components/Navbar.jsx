@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -12,8 +12,18 @@ export default function Navbar({ onSearch }) {
     const [searchTerm, setSearchTerm] = useState('');
     const navigate = useNavigate();
 
+    // Debounce search input changes
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            if (onSearch) {
+                onSearch(searchTerm);
+            }
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [searchTerm, onSearch]);
+
     const handleSearchSubmit = (e) => {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         if (onSearch) {
             onSearch(searchTerm);
         }

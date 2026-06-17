@@ -1,8 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import api from '../services/api';
 
 const AuthContext = createContext();
-
-const API_BASE = 'http://localhost:8080/api';
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -11,17 +10,12 @@ export const AuthProvider = ({ children }) => {
 
     const fetchProfile = async (accessToken) => {
         try {
-            const res = await fetch(`${API_BASE}/auth/me`, {
+            const res = await api.get('/auth/me', {
                 headers: {
                     'Authorization': `Bearer ${accessToken}`
                 }
             });
-            if (res.ok) {
-                const data = await res.json();
-                setUser(data);
-            } else {
-                logout();
-            }
+            setUser(res.data);
         } catch (err) {
             console.error('Error fetching user profile', err);
             logout();
@@ -43,33 +37,26 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+            const res = await api.post('/auth/login', { email, password });
+            const data = res.data;
+            localStorage.setItem('token', data.accessToken);
+            localStorage.setItem('refreshToken', data.refreshToken);
+            setToken(data.accessToken);
+            // Set initial user details, then fetch full profile to get address lists
+            setUser({
+                email: data.email,
+                role: data.role,
+                rewardPoints: data.rewardPoints,
+                referralCode: data.referralCode,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                addresses: []
             });
-            const data = await res.json();
-            if (res.ok) {
-                localStorage.setItem('token', data.accessToken);
-                localStorage.setItem('refreshToken', data.refreshToken);
-                setToken(data.accessToken);
-                // Set initial user details, then fetch full profile to get address lists
-                setUser({
-                    email: data.email,
-                    role: data.role,
-                    rewardPoints: data.rewardPoints,
-                    referralCode: data.referralCode,
-                    firstName: data.firstName,
-                    lastName: data.lastName,
-                    addresses: []
-                });
-                await fetchProfile(data.accessToken);
-                return { success: true };
-            } else {
-                return { success: false, message: data.message || 'Login failed' };
-            }
+            await fetchProfile(data.accessToken);
+            return { success: true };
         } catch (err) {
-            return { success: false, message: 'Server connection error' };
+            const message = err.response?.data?.message || 'Login failed';
+            return { success: false, message };
         } finally {
             setLoading(false);
         }
@@ -82,32 +69,25 @@ export const AuthProvider = ({ children }) => {
             if (referredBy && referredBy.trim() !== '') {
                 payload.referredBy = referredBy;
             }
-            const res = await fetch(`${API_BASE}/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+            const res = await api.post('/auth/register', payload);
+            const data = res.data;
+            localStorage.setItem('token', data.accessToken);
+            localStorage.setItem('refreshToken', data.refreshToken);
+            setToken(data.accessToken);
+            setUser({
+                email: data.email,
+                role: data.role,
+                rewardPoints: data.rewardPoints,
+                referralCode: data.referralCode,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                addresses: []
             });
-            const data = await res.json();
-            if (res.ok) {
-                localStorage.setItem('token', data.accessToken);
-                localStorage.setItem('refreshToken', data.refreshToken);
-                setToken(data.accessToken);
-                setUser({
-                    email: data.email,
-                    role: data.role,
-                    rewardPoints: data.rewardPoints,
-                    referralCode: data.referralCode,
-                    firstName: data.firstName,
-                    lastName: data.lastName,
-                    addresses: []
-                });
-                await fetchProfile(data.accessToken);
-                return { success: true };
-            } else {
-                return { success: false, message: data.message || 'Registration failed' };
-            }
+            await fetchProfile(data.accessToken);
+            return { success: true };
         } catch (err) {
-            return { success: false, message: 'Server connection error' };
+            const message = err.response?.data?.message || 'Registration failed';
+            return { success: false, message };
         } finally {
             setLoading(false);
         }

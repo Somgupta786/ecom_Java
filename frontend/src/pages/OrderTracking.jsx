@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Compass, Search, Calendar, MapPin, ShieldAlert, ArrowLeft, PackageCheck } from 'lucide-react';
-
-const API_BASE = 'http://localhost:8080/api';
+import api from '../services/api';
 
 export default function OrderTracking() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -23,15 +22,11 @@ export default function OrderTracking() {
         setSearchParams({ code: trackingNumber.trim() });
 
         try {
-            const res = await fetch(`${API_BASE}/orders/public/track/${trackingNumber.trim()}`);
-            const data = await res.json();
-            if (res.ok) {
-                setOrder(data);
-            } else {
-                setError(data.message || 'Tracking number not found. Please verify and try again.');
-            }
+            const res = await api.get(`/orders/public/track/${trackingNumber.trim()}`);
+            setOrder(res.data);
         } catch (err) {
-            setError('Could not connect to database. Please make sure backend is online.');
+            const msg = err.response?.data?.message || 'Tracking number not found. Please verify and try again.';
+            setError(msg);
         } finally {
             setLoading(false);
         }

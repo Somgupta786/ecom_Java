@@ -22,7 +22,17 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<Product> searchProducts(Long categoryId, String search, Pageable pageable) {
-        return productRepository.searchProducts(categoryId, search, pageable);
+        String searchPattern = (search == null || search.trim().isEmpty()) ? null : "%" + search.trim().toLowerCase() + "%";
+        
+        if (categoryId != null && searchPattern != null) {
+            return productRepository.searchByCategoryAndSearch(categoryId, searchPattern, pageable);
+        } else if (categoryId != null) {
+            return productRepository.searchByCategory(categoryId, pageable);
+        } else if (searchPattern != null) {
+            return productRepository.searchByText(searchPattern, pageable);
+        } else {
+            return productRepository.findAll(pageable);
+        }
     }
 
     @Cacheable(value = "products", key = "#id")

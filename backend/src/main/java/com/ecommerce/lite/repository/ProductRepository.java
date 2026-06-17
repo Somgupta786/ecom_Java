@@ -12,9 +12,17 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE " +
-           "(:categoryId IS NULL OR p.category.id = :categoryId OR p.category.parent.id = :categoryId) AND " +
-           "(:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.description) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<Product> searchProducts(@Param("categoryId") Long categoryId, @Param("search") String search, Pageable pageable);
+           "(p.category.id = :categoryId OR p.category.parent.id = :categoryId) AND " +
+           "(LOWER(p.name) LIKE :search OR LOWER(p.description) LIKE :search)")
+    Page<Product> searchByCategoryAndSearch(@Param("categoryId") Long categoryId, @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE " +
+           "p.category.id = :categoryId OR p.category.parent.id = :categoryId")
+    Page<Product> searchByCategory(@Param("categoryId") Long categoryId, Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE " +
+           "LOWER(p.name) LIKE :search OR LOWER(p.description) LIKE :search")
+    Page<Product> searchByText(@Param("search") String search, Pageable pageable);
 
     List<Product> findTop5ByOrderByRatingDesc();
     List<Product> findTop5ByCategoryIdAndIdNot(Long categoryId, Long id);

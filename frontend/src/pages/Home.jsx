@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProductCard from '../components/ProductCard';
 import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
-
-const API_BASE = 'http://localhost:8080/api';
+import api from '../services/api';
 
 const slides = [
     {
@@ -42,11 +41,8 @@ export default function Home({ searchFilter }) {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const res = await fetch(`${API_BASE}/products/categories`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setCategories(data);
-                }
+                const res = await api.get('/products/categories');
+                setCategories(res.data);
             } catch (err) {
                 console.error('Error fetching categories', err);
             }
@@ -54,11 +50,8 @@ export default function Home({ searchFilter }) {
 
         const fetchRecommendations = async () => {
             try {
-                const res = await fetch(`${API_BASE}/products/recommendations`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setRecommendations(data);
-                }
+                const res = await api.get('/products/recommendations');
+                setRecommendations(res.data);
             } catch (err) {
                 console.error('Error fetching recommendations', err);
             }
@@ -73,20 +66,26 @@ export default function Home({ searchFilter }) {
         const fetchProducts = async () => {
             setLoading(true);
             try {
-                let url = `${API_BASE}/products?page=${page}&size=6&sortBy=${sortBy}&direction=${dir}`;
+                let path = `/products?page=${page}&size=6&sortBy=${sortBy}&direction=${dir}`;
                 if (selectedCategory) {
-                    url += `&categoryId=${selectedCategory}`;
+                    path += `&categoryId=${selectedCategory}`;
                 }
                 if (searchFilter) {
-                    url += `&search=${encodeURIComponent(searchFilter)}`;
+                    path += `&search=${encodeURIComponent(searchFilter)}`;
                 }
                 
-                const res = await fetch(url);
-                if (res.ok) {
-                    const data = await res.json();
+                const res = await api.get(path);
+                const data = res.data;
+                if (page === 0) {
                     setProducts(data.content || []);
-                    setTotalPages(data.totalPages || 0);
+                } else {
+                    setProducts(prev => {
+                        const existingIds = new Set(prev.map(p => p.id));
+                        const newContent = (data.content || []).filter(p => !existingIds.has(p.id));
+                        return [...prev, ...newContent];
+                    });
                 }
+                setTotalPages(data.totalPages || 0);
             } catch (err) {
                 console.error('Error fetching products', err);
             } finally {
@@ -97,10 +96,25 @@ export default function Home({ searchFilter }) {
         fetchProducts();
     }, [selectedCategory, searchFilter, page, sortBy, dir]);
 
-    // Reset page on filter changes
+    // Reset page on filter or sorting changes
     useEffect(() => {
         setPage(0);
-    }, [selectedCategory, searchFilter]);
+    }, [selectedCategory, searchFilter, sortBy, dir]);
+
+    // Infinite Scroll event listener
+    useEffect(() => {
+        const handleScroll = () => {
+            // Check if user is scrolled within 150px of the page bottom
+            if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 150) {
+                if (!loading && page < totalPages - 1) {
+                    setPage(prev => prev + 1);
+                }
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [loading, page, totalPages]);
 
     const handleCategoryClick = (categoryId) => {
         setSelectedCategory(prev => prev === categoryId ? null : categoryId);
@@ -236,7 +250,7 @@ export default function Home({ searchFilter }) {
             </div>
 
             {/* Products Listing */}
-            {loading ? (
+            {page === 0 && loading ? (
                 <div style={{ textAlign: 'center', padding: '60px 0', fontSize: '18px', color: 'var(--text-muted)' }}>
                     Loading premium catalog...
                 </div>
@@ -252,28 +266,17 @@ export default function Home({ searchFilter }) {
                         ))}
                     </div>
 
-                    {/* Pagination Controllers */}
-                    {totalPages > 1 && (
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '40px' }}>
-                            <button 
-                                onClick={() => setPage(prev => Math.max(0, prev - 1))}
-                                disabled={page === 0}
-                                className={`btn btn-secondary btn-sm ${page === 0 ? 'btn-disabled' : ''}`}
-                            >
-                                <ChevronLeft size={16} />
-                                <span>Previous</span>
-                            </button>
-                            <span style={{ color: 'var(--text-secondary)' }}>
-                                Page <strong>{page + 1}</strong> of <strong>{totalPages}</strong>
-                            </span>
-                            <button 
-                                onClick={() => setPage(prev => Math.min(totalPages - 1, prev + 1))}
-                                disabled={page === totalPages - 1}
-                                className={`btn btn-secondary btn-sm ${page === totalPages - 1 ? 'btn-disabled' : ''}`}
-                            >
-                                <span>Next</span>
-                                <ChevronRight size={16} />
-                            </button>
+                    {/* Small loader at bottom when fetching more pages */}
+                    {page > 0 && loading && (
+                        <div style={{ textAlign: 'center', padding: '24px 0', fontSize: '14px', color: 'var(--text-muted)' }}>
+                            Loading more products...
+                        </div>
+                    )}
+
+                    {/* End of results message */}
+                    {!loading && page >= totalPages - 1 && products.length > 0 && (
+                        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '13px', color: 'var(--text-muted)', fontWeight: 'bold' }}>
+                            ✓ You have viewed all products in our catalog.
                         </div>
                     )}
                 </>

@@ -4,12 +4,11 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import ProductCard from '../components/ProductCard';
 import { Star, ShieldAlert, CheckCircle2, MessageSquarePlus } from 'lucide-react';
-
-const API_BASE = 'http://localhost:8080/api';
+import api from '../services/api';
 
 export default function ProductDetail() {
     const { id } = useParams();
-    const { addToCart } = useCart();
+    const { addToCart, cartItems } = useCart();
     const { token, user } = useAuth();
     
     const [product, setProduct] = useState(null);
@@ -18,6 +17,10 @@ export default function ProductDetail() {
     
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(true);
+    const [added, setAdded] = useState(false);
+
+    const cartItem = cartItems?.find(item => item.product.id === product?.id);
+    const quantityInCart = cartItem ? cartItem.quantity : 0;
     
     // Review form state
     const [rating, setRating] = useState(5);
@@ -28,23 +31,14 @@ export default function ProductDetail() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const prodRes = await fetch(`${API_BASE}/products/${id}`);
-            if (prodRes.ok) {
-                const prodData = await prodRes.json();
-                setProduct(prodData);
-            }
+            const prodRes = await api.get(`/products/${id}`);
+            setProduct(prodRes.data);
 
-            const relatedRes = await fetch(`${API_BASE}/products/${id}/related`);
-            if (relatedRes.ok) {
-                const relatedData = await relatedRes.json();
-                setRelated(relatedData);
-            }
+            const relatedRes = await api.get(`/products/${id}/related`);
+            setRelated(relatedRes.data);
 
-            const reviewRes = await fetch(`${API_BASE}/products/${id}/reviews`);
-            if (reviewRes.ok) {
-                const reviewData = await reviewRes.json();
-                setReviews(reviewData);
-            }
+            const reviewRes = await api.get(`/products/${id}/reviews`);
+            setReviews(reviewRes.data);
         } catch (err) {
             console.error('Error fetching product details', err);
         } finally {
@@ -63,6 +57,8 @@ export default function ProductDetail() {
     const handleAddToCart = async () => {
         if (!product) return;
         await addToCart(product, quantity);
+        setAdded(true);
+        setTimeout(() => setAdded(false), 2000);
     };
 
     const handleReviewSubmit = async (e) => {
@@ -76,36 +72,18 @@ export default function ProductDetail() {
         }
 
         try {
-            const res = await fetch(`${API_BASE}/products/${id}/reviews`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ rating, comment })
-            });
-
-            if (res.ok) {
-                setReviewSuccess(true);
-                setComment('');
-                setRating(5);
-                // Reload data to show new review and update average rating
-                const reviewRes = await fetch(`${API_BASE}/products/${id}/reviews`);
-                if (reviewRes.ok) {
-                    const reviewData = await reviewRes.json();
-                    setReviews(reviewData);
-                }
-                const prodRes = await fetch(`${API_BASE}/products/${id}`);
-                if (prodRes.ok) {
-                    const prodData = await prodRes.json();
-                    setProduct(prodData);
-                }
-            } else {
-                const err = await res.json();
-                setReviewError(err.message || 'Failed to submit review');
-            }
+            await api.post(`/products/${id}/reviews`, { rating, comment });
+            setReviewSuccess(true);
+            setComment('');
+            setRating(5);
+            // Reload data to show new review and update average rating
+            const reviewRes = await api.get(`/products/${id}/reviews`);
+            setReviews(reviewRes.data);
+            const prodRes = await api.get(`/products/${id}`);
+            setProduct(prodRes.data);
         } catch (err) {
-            setReviewError('Network error submitting review');
+            const msg = err.response?.data?.message || 'Failed to submit review';
+            setReviewError(msg);
         }
     };
 
@@ -167,28 +145,70 @@ export default function ProductDetail() {
                     </div>
 
                     {product.stock > 0 && (
-                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '4px' }}>
+                        <>
+                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '4px' }}>
+                                    <button 
+                                        onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                                        className="btn btn-secondary btn-sm"
+                                        style={{ padding: '6px 12px' }}
+                                    >
+                                        -
+                                    </button>
+                                    <span style={{ padding: '0 16px', fontWeight: 'bold' }}>{quantity}</span>
+                                    <button 
+                                        onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
+                                        className="btn btn-secondary btn-sm"
+                                        style={{ padding: '6px 12px' }}
+                                    >
+                                        +
+                                    </button>
+                                </div>
                                 <button 
-                                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                                    className="btn btn-secondary btn-sm"
-                                    style={{ padding: '6px 12px' }}
+                                    onClick={handleAddToCart} 
+                                    className={`btn ${added ? 'btn-success' : 'btn-primary'}`} 
+                                    style={{ 
+                                        flex: 1,
+                                        backgroundColor: added ? 'var(--success)' : undefined,
+                                        borderColor: added ? 'var(--success)' : undefined,
+                                        display: 'flex',
+                                        gap: '8px',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        transition: 'var(--transition)'
+                                    }}
+                                    disabled={added}
                                 >
-                                    -
-                                </button>
-                                <span style={{ padding: '0 16px', fontWeight: 'bold' }}>{quantity}</span>
-                                <button 
-                                    onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
-                                    className="btn btn-secondary btn-sm"
-                                    style={{ padding: '6px 12px' }}
-                                >
-                                    +
+                                    {added ? (
+                                        <>
+                                            <CheckCircle2 size={16} />
+                                            <span>Added</span>
+                                        </>
+                                    ) : (
+                                        <span>Add to Cart</span>
+                                    )}
                                 </button>
                             </div>
-                            <button onClick={handleAddToCart} className="btn btn-primary" style={{ flex: 1 }}>
-                                Add to Cart
-                            </button>
-                        </div>
+                            {quantityInCart > 0 && (
+                                <div style={{ 
+                                    marginTop: '16px', 
+                                    padding: '10px 14px', 
+                                    borderRadius: '8px', 
+                                    backgroundColor: 'var(--accent-light)', 
+                                    border: '1px solid rgba(99, 102, 241, 0.2)', 
+                                    color: 'var(--accent)', 
+                                    fontSize: '13px', 
+                                    fontWeight: 'bold', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '8px',
+                                    animation: 'fadeIn 0.2s ease-out'
+                                }}>
+                                    <CheckCircle2 size={16} />
+                                    <span>You have {quantityInCart} unit(s) of this item in your cart.</span>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

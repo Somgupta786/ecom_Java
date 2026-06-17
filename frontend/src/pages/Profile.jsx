@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { MapPin, Award, Share2, Clipboard, Printer, Package, XCircle } from 'lucide-react';
+import api from '../services/api';
 
 const API_BASE = 'http://localhost:8080/api';
 
@@ -25,13 +26,8 @@ export default function Profile() {
     const fetchOrders = async () => {
         setOrdersLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/orders/history`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setOrders(data);
-            }
+            const res = await api.get('/orders/history');
+            setOrders(res.data);
         } catch (err) {
             console.error('Error fetching order history', err);
         } finally {
@@ -57,15 +53,9 @@ export default function Profile() {
         setAddressMsg('');
 
         // Simulating appending address by saving back to order shipping structures or updating profile
-        // Since we are mocking user addresses updates in state or using local storage adjustments:
         try {
-            // Update the user profile addresses list
-            // For a fully production grade store, we can update user profile details
-            // Let's implement local user address addition in the profile
             const updatedAddresses = [...user.addresses, { street, city, state, zipCode, country, phone }];
             
-            // To make sure it persists in DB, we could write a PUT endpoint, or we can just mock-save it.
-            // Let's mock save it in state & inform user
             user.addresses = updatedAddresses;
             setAddressMsg('Address added successfully!');
             setShowAddressForm(false);
@@ -83,20 +73,20 @@ export default function Profile() {
     const handleCancelOrder = async (orderId) => {
         if (!window.confirm('Are you sure you want to cancel this order?')) return;
 
+        const originalOrders = [...orders];
+        // Optimistically set order status to CANCELLED in local state
+        setOrders(prev => prev.map(order => 
+            order.id === orderId ? { ...order, status: 'CANCELLED' } : order
+        ));
+
         try {
-            const res = await fetch(`${API_BASE}/orders/${orderId}/cancel`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                await fetchOrders();
-                await refreshProfile();
-            } else {
-                const err = await res.json();
-                alert(err.message || 'Failed to cancel order');
-            }
+            await api.post(`/orders/${orderId}/cancel`);
+            fetchOrders(); // Sync in background
+            refreshProfile();
         } catch (err) {
-            console.error('Error canceling order', err);
+            setOrders(originalOrders); // Revert on error
+            const msg = err.response?.data?.message || 'Failed to cancel order';
+            alert(msg);
         }
     };
 

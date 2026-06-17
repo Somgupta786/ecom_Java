@@ -17,6 +17,7 @@ com\ecommerce\lite\config\JwtUtils.class
 com\ecommerce\lite\controller\ProductController.class
 com\ecommerce\lite\repository\CategoryRepository.class
 com\ecommerce\lite\service\AuthService.class
+com\ecommerce\lite\config\GlobalExceptionHandler.class
 com\ecommerce\lite\model\User.class
 com\ecommerce\lite\model\Product.class
 com\ecommerce\lite\controller\OrderController.class

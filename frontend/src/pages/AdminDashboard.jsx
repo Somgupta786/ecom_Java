@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { 
     TrendingUp, Users, ShoppingCart, AlertCircle, 
-    PlusCircle, Trash2, Edit, Save, PowerOff 
+    PlusCircle, Trash2, Edit, Save, PowerOff, Sun, Moon 
 } from 'lucide-react';
-
-const API_BASE = 'http://localhost:8080/api';
+import api from '../services/api';
 
 export default function AdminDashboard() {
-    const { token } = useAuth();
+    const { token, logout } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     
     // Sidebar view
     const [view, setView] = useState('analytics'); // analytics, products, orders, coupons
@@ -31,32 +32,20 @@ export default function AdminDashboard() {
     const fetchData = async () => {
         try {
             // Stats
-            const statsRes = await fetch(`${API_BASE}/admin/dashboard/stats`, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (statsRes.ok) {
-                const statsData = await statsRes.json();
-                setStats(statsData);
-            }
+            const statsRes = await api.get('/admin/dashboard/stats');
+            setStats(statsRes.data);
 
             // Products
-            const prodRes = await fetch(`${API_BASE}/products?size=100`);
-            if (prodRes.ok) {
-                const prodData = await prodRes.json();
-                setProducts(prodData.content || []);
-            }
+            const prodRes = await api.get('/products?size=100');
+            setProducts(prodRes.data.content || []);
 
             // Categories
-            const catRes = await fetch(`${API_BASE}/products/categories`);
-            if (catRes.ok) {
-                const catData = await catRes.json();
-                setCategories(catData);
-            }
+            const catRes = await api.get('/products/categories');
+            setCategories(catRes.data);
 
             // Orders
-            const orderRes = await fetch(`${API_BASE}/admin/orders`, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (orderRes.ok) {
-                const orderData = await orderRes.json();
-                setOrders(orderData);
-            }
+            const orderRes = await api.get('/admin/orders');
+            setOrders(orderRes.data);
         } catch (err) {
             console.error('Error fetching admin data', err);
         }
@@ -84,24 +73,12 @@ export default function AdminDashboard() {
         };
 
         try {
-            const res = await fetch(`${API_BASE}/admin/products`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                setMsg('Product created successfully!');
-                setNewProduct({ name: '', description: '', price: '', sku: '', stock: '', imageUrl: '', categoryId: '' });
-                await fetchData();
-            } else {
-                setMsg('Error creating product.');
-            }
+            await api.post('/admin/products', payload);
+            setMsg('Product created successfully!');
+            setNewProduct({ name: '', description: '', price: '', sku: '', stock: '', imageUrl: '', categoryId: '' });
+            await fetchData();
         } catch (err) {
-            setMsg('Network error.');
+            setMsg('Error creating product.');
         }
     };
 
@@ -121,24 +98,12 @@ export default function AdminDashboard() {
         };
 
         try {
-            const res = await fetch(`${API_BASE}/admin/products/${editingProduct.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                setMsg('Product updated successfully!');
-                setEditingProduct(null);
-                await fetchData();
-            } else {
-                setMsg('Error updating product.');
-            }
+            await api.put(`/admin/products/${editingProduct.id}`, payload);
+            setMsg('Product updated successfully!');
+            setEditingProduct(null);
+            await fetchData();
         } catch (err) {
-            setMsg('Network error.');
+            setMsg('Error updating product.');
         }
     };
 
@@ -147,18 +112,11 @@ export default function AdminDashboard() {
         setMsg('');
 
         try {
-            const res = await fetch(`${API_BASE}/admin/products/${prodId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                setMsg('Product deleted.');
-                await fetchData();
-            } else {
-                setMsg('Error deleting product.');
-            }
+            await api.delete(`/admin/products/${prodId}`);
+            setMsg('Product deleted.');
+            await fetchData();
         } catch (err) {
-            setMsg('Network error.');
+            setMsg('Error deleting product.');
         }
     };
 
@@ -168,48 +126,82 @@ export default function AdminDashboard() {
         if (!newCategoryName.trim()) return;
 
         try {
-            const res = await fetch(`${API_BASE}/admin/categories`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ name: newCategoryName })
-            });
-
-            if (res.ok) {
-                setMsg('Category added!');
-                setNewCategoryName('');
-                await fetchData();
-            } else {
-                setMsg('Error adding category.');
-            }
+            await api.post('/admin/categories', { name: newCategoryName });
+            setMsg('Category added!');
+            setNewCategoryName('');
+            await fetchData();
         } catch (err) {
-            setMsg('Network error.');
+            setMsg('Error adding category.');
         }
     };
 
     const handleUpdateOrderStatus = async (orderId, newStatus) => {
         try {
-            const res = await fetch(`${API_BASE}/admin/orders/${orderId}/status?status=${newStatus}`, {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                await fetchData();
-            }
+            await api.put(`/admin/orders/${orderId}/status?status=${newStatus}`);
+            await fetchData();
         } catch (err) {
             console.error('Error updating status', err);
         }
+    };
+
+    // Helper to calculate daily revenue for Area Chart
+    const getRevenueChartData = () => {
+        const dailyRevenue = {};
+        const sortedOrders = [...orders]
+            .filter(o => o.status !== 'CANCELLED' && o.orderDate)
+            .sort((a, b) => a.orderDate.localeCompare(b.orderDate));
+
+        sortedOrders.forEach(order => {
+            const dateStr = order.orderDate.substring(0, 10); // YYYY-MM-DD
+            const amount = order.totalAmount || 0;
+            dailyRevenue[dateStr] = (dailyRevenue[dateStr] || 0) + amount;
+        });
+
+        const dates = Object.keys(dailyRevenue).slice(-7);
+        const values = dates.map(d => dailyRevenue[d]);
+
+        if (dates.length === 0) {
+            return {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                values: [80, 210, 140, 390, 270, 540, 420]
+            };
+        }
+
+        return { labels: dates.map(d => d.substring(5)), values }; // MM-DD
+    };
+
+    // Helper to calculate status breakdown for Activity Rings
+    const getStatusChartData = () => {
+        const statusCounts = { PENDING: 0, PAID: 0, SHIPPED: 0, DELIVERED: 0, CANCELLED: 0 };
+        orders.forEach(o => {
+            if (o.status && statusCounts[o.status] !== undefined) {
+                statusCounts[o.status]++;
+            }
+        });
+        return statusCounts;
+    };
+
+    // Helper to calculate category distribution for horizontal bars
+    const getCategoryProductCounts = () => {
+        const counts = {};
+        categories.forEach(c => {
+            counts[c.name] = 0;
+        });
+        products.forEach(p => {
+            if (p.category && p.category.name) {
+                counts[p.category.name] = (counts[p.category.name] || 0) + 1;
+            }
+        });
+        return counts;
     };
 
     return (
         <div className="admin-layout">
             
             {/* Sidebar View Switcher */}
-            <div className="admin-sidebar">
+            <div className="admin-sidebar" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)', position: 'sticky', top: '40px' }}>
                 <h3 style={{ fontSize: '18px', marginBottom: '20px', paddingLeft: '8px' }}>Store Admin</h3>
-                <ul className="admin-sidebar-menu">
+                <ul className="admin-sidebar-menu" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <li onClick={() => setView('analytics')} className={`admin-sidebar-item ${view === 'analytics' ? 'active' : ''}`}>
                         <TrendingUp size={16} />
                         <span>Dashboard</span>
@@ -226,6 +218,17 @@ export default function AdminDashboard() {
                         <AlertCircle size={16} />
                         <span>Categories</span>
                     </li>
+                    
+                    {/* Theme Toggle in Admin View */}
+                    <li onClick={toggleTheme} className="admin-sidebar-item" style={{ marginTop: 'auto' }}>
+                        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                        <span>Toggle Theme</span>
+                    </li>
+                    {/* Logout in Admin View */}
+                    <li onClick={logout} className="admin-sidebar-item" style={{ color: 'var(--error)' }}>
+                        <PowerOff size={16} />
+                        <span>Logout</span>
+                    </li>
                 </ul>
             </div>
 
@@ -239,73 +242,224 @@ export default function AdminDashboard() {
                 )}
 
                 {/* VIEW 1: Analytics */}
-                {view === 'analytics' && (
-                    <div>
-                        <h2 style={{ fontSize: '24px', marginBottom: '24px' }}>Performance & Analytics</h2>
-                        
-                        <div className="admin-dashboard-metrics">
-                            <div className="metric-card">
-                                <div className="metric-icon"><TrendingUp size={24} /></div>
-                                <div className="metric-info">
-                                    <h4>Total Revenue</h4>
-                                    <p>${stats.totalRevenue?.toFixed(2) || '0.00'}</p>
-                                </div>
-                            </div>
-                            <div className="metric-card">
-                                <div className="metric-icon"><Users size={24} /></div>
-                                <div className="metric-info">
-                                    <h4>Total Users</h4>
-                                    <p>{stats.totalUsers || 0}</p>
-                                </div>
-                            </div>
-                            <div className="metric-card">
-                                <div className="metric-icon"><ShoppingCart size={24} /></div>
-                                <div className="metric-info">
-                                    <h4>Pending Orders</h4>
-                                    <p>{stats.pendingOrders || 0}</p>
-                                </div>
-                            </div>
-                            <div className="metric-card" style={{ borderLeft: stats.outOfStockProducts > 0 ? '3px solid var(--error)' : 'none' }}>
-                                <div className="metric-icon" style={{ color: stats.outOfStockProducts > 0 ? 'var(--error)' : 'var(--accent)' }}><AlertCircle size={24} /></div>
-                                <div className="metric-info">
-                                    <h4>Out of Stock</h4>
-                                    <p style={{ color: stats.outOfStockProducts > 0 ? 'var(--error)' : 'var(--text-primary)' }}>
-                                        {stats.outOfStockProducts || 0}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                {view === 'analytics' && (() => {
+                    const revenueData = getRevenueChartData();
+                    const maxRevenue = Math.max(...revenueData.values, 100);
+                    const height = 180;
+                    const width = 500;
+                    const padding = 30;
 
-                        {/* Recent Order Activities */}
-                        <div className="checkout-card" style={{ margin: 0, padding: '24px' }}>
-                            <h3 style={{ marginBottom: '16px' }}>Pending Order Activities</h3>
-                            {orders.filter(o => o.status === 'PENDING' || o.status === 'PAID').length === 0 ? (
-                                <p style={{ color: 'var(--text-muted)' }}>No pending orders requiring attention.</p>
-                            ) : (
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
-                                    <thead>
-                                        <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                                            <th style={{ padding: '8px' }}>Order ID</th>
-                                            <th style={{ padding: '8px' }}>User</th>
-                                            <th style={{ padding: '8px' }}>Amount</th>
-                                            <th style={{ padding: '8px' }}>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {orders.filter(o => o.status === 'PENDING' || o.status === 'PAID').map(o => (
-                                            <tr key={o.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                                <td style={{ padding: '8px' }}>#{o.id}</td>
-                                                <td style={{ padding: '8px' }}>{o.user?.email}</td>
-                                                <td style={{ padding: '8px' }}>${o.totalAmount?.toFixed(2)}</td>
-                                                <td style={{ padding: '8px', color: 'var(--success)' }}>{o.status}</td>
-                                            </tr>
+                    const points = revenueData.values.map((val, idx) => {
+                        const x = padding + (idx * (width - 2 * padding)) / Math.max(1, revenueData.values.length - 1);
+                        const y = height - padding - (val * (height - 2 * padding)) / maxRevenue;
+                        return { x, y, val, label: revenueData.labels[idx] };
+                    });
+
+                    let pathD = '';
+                    if (points.length > 0) {
+                        pathD = `M ${points[0].x} ${points[0].y}`;
+                        for (let i = 1; i < points.length; i++) {
+                            pathD += ` L ${points[i].x} ${points[i].y}`;
+                        }
+                    }
+                    const areaD = points.length > 0 
+                        ? `${pathD} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
+                        : '';
+
+                    const statusCounts = getStatusChartData();
+                    const totalOrders = orders.length || 1;
+                    const deliveredPercent = Math.min(100, Math.max(0, (((statusCounts.DELIVERED + statusCounts.PAID + statusCounts.SHIPPED) / totalOrders) * 100)));
+                    const pendingPercent = Math.min(100, Math.max(0, ((statusCounts.PENDING / totalOrders) * 100)));
+                    const cancelledPercent = Math.min(100, Math.max(0, ((statusCounts.CANCELLED / totalOrders) * 100)));
+
+                    const categoryCounts = getCategoryProductCounts();
+                    const maxCatCount = Math.max(...Object.values(categoryCounts), 1);
+
+                    return (
+                        <div>
+                            <h2 style={{ fontSize: '24px', marginBottom: '24px' }}>Performance & Analytics</h2>
+                            
+                            <div className="admin-dashboard-metrics">
+                                <div className="metric-card">
+                                    <div className="metric-icon"><TrendingUp size={24} /></div>
+                                    <div className="metric-info">
+                                        <h4>Total Revenue</h4>
+                                        <p>${stats.totalRevenue?.toFixed(2) || '0.00'}</p>
+                                    </div>
+                                </div>
+                                <div className="metric-card">
+                                    <div className="metric-icon"><Users size={24} /></div>
+                                    <div className="metric-info">
+                                        <h4>Total Users</h4>
+                                        <p>{stats.totalUsers || 0}</p>
+                                    </div>
+                                </div>
+                                <div className="metric-card">
+                                    <div className="metric-icon"><ShoppingCart size={24} /></div>
+                                    <div className="metric-info">
+                                        <h4>Pending Orders</h4>
+                                        <p>{stats.pendingOrders || 0}</p>
+                                    </div>
+                                </div>
+                                <div className="metric-card" style={{ borderLeft: stats.outOfStockProducts > 0 ? '3px solid var(--error)' : 'none' }}>
+                                    <div className="metric-icon" style={{ color: stats.outOfStockProducts > 0 ? 'var(--error)' : 'var(--accent)' }}><AlertCircle size={24} /></div>
+                                    <div className="metric-info">
+                                        <h4>Out of Stock</h4>
+                                        <p style={{ color: stats.outOfStockProducts > 0 ? 'var(--error)' : 'var(--text-primary)' }}>
+                                            {stats.outOfStockProducts || 0}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Charts Grid */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+                                
+                                {/* Area Chart: Revenue Trend */}
+                                <div className="checkout-card" style={{ margin: 0, padding: '20px' }}>
+                                    <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>Revenue Timeline (Last 7 Days)</h3>
+                                    <div style={{ position: 'relative' }}>
+                                        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+                                            <defs>
+                                                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.4"/>
+                                                    <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.0"/>
+                                                </linearGradient>
+                                            </defs>
+                                            
+                                            {/* Y-axis gridlines */}
+                                            {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
+                                                const y = padding + ratio * (height - 2 * padding);
+                                                return (
+                                                    <line key={i} x1={padding} y1={y} x2={width - padding} y2={y} 
+                                                          stroke="var(--border-color)" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
+                                                );
+                                            })}
+
+                                            {/* Area Path */}
+                                            {areaD && <path d={areaD} fill="url(#chartGradient)" />}
+                                            
+                                            {/* Line Path */}
+                                            {pathD && <path d={pathD} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" />}
+                                            
+                                            {/* Labels and Dots */}
+                                            {points.map((pt, i) => (
+                                                <g key={i}>
+                                                    <circle cx={pt.x} cy={pt.y} r="5" fill="var(--bg-secondary)" stroke="var(--accent)" strokeWidth="2" />
+                                                    <text x={pt.x} y={height - 10} textAnchor="middle" fill="var(--text-muted)" fontSize="10px" fontFamily="var(--font-heading)">
+                                                        {pt.label}
+                                                    </text>
+                                                    <text x={pt.x} y={pt.y - 10} textAnchor="middle" fill="var(--text-primary)" fontSize="9px" fontWeight="bold">
+                                                        ${Math.round(pt.val)}
+                                                    </text>
+                                                </g>
+                                            ))}
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                {/* Concentric Activity Rings: Order Status */}
+                                <div className="checkout-card" style={{ margin: 0, padding: '20px', display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>Order Fulfillment Rate</h3>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                                                <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--success)' }} />
+                                                <span>Delivered/Paid ({Math.round(deliveredPercent)}%)</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                                                <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--accent)' }} />
+                                                <span>Pending ({Math.round(pendingPercent)}%)</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                                                <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--error)' }} />
+                                                <span>Cancelled ({Math.round(cancelledPercent)}%)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', width: '120px', height: '120px' }}>
+                                        <svg viewBox="0 0 120 120" width="120" height="120" style={{ transform: 'rotate(-90deg)', overflow: 'visible' }}>
+                                            {/* Outermost Ring: Success */}
+                                            <circle cx="60" cy="60" r="45" fill="none" stroke="var(--border-color)" strokeWidth="6" opacity="0.15" />
+                                            <circle cx="60" cy="60" r="45" fill="none" stroke="var(--success)" strokeWidth="6" 
+                                                    strokeDasharray={2 * Math.PI * 45} 
+                                                    strokeDashoffset={2 * Math.PI * 45 * (1 - Math.max(0.01, deliveredPercent) / 100)} 
+                                                    strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} />
+                                            
+                                            {/* Middle Ring: Pending */}
+                                            <circle cx="60" cy="60" r="32" fill="none" stroke="var(--border-color)" strokeWidth="6" opacity="0.15" />
+                                            <circle cx="60" cy="60" r="32" fill="none" stroke="var(--accent)" strokeWidth="6" 
+                                                    strokeDasharray={2 * Math.PI * 32} 
+                                                    strokeDashoffset={2 * Math.PI * 32 * (1 - Math.max(0.01, pendingPercent) / 100)} 
+                                                    strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} />
+                                            
+                                            {/* Innermost Ring: Cancelled */}
+                                            <circle cx="60" cy="60" r="19" fill="none" stroke="var(--border-color)" strokeWidth="6" opacity="0.15" />
+                                            <circle cx="60" cy="60" r="19" fill="none" stroke="var(--error)" strokeWidth="6" 
+                                                    strokeDasharray={2 * Math.PI * 19} 
+                                                    strokeDashoffset={2 * Math.PI * 19 * (1 - Math.max(0.01, cancelledPercent) / 100)} 
+                                                    strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                {/* Catalog Inventory Distribution */}
+                                <div className="checkout-card" style={{ margin: 0, padding: '20px' }}>
+                                    <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>Catalog by Category</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
+                                        {Object.entries(categoryCounts).map(([catName, count]) => (
+                                            <div key={catName}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+                                                    <span>{catName}</span>
+                                                    <strong>{count} items</strong>
+                                                </div>
+                                                <div style={{ height: '8px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
+                                                    <div style={{ 
+                                                        height: '100%', 
+                                                        width: `${(count / maxCatCount) * 100}%`, 
+                                                        backgroundColor: 'var(--accent)', 
+                                                        borderRadius: '4px',
+                                                        transition: 'width 0.8s ease-out'
+                                                    }} />
+                                                </div>
+                                            </div>
                                         ))}
-                                    </tbody>
-                                </table>
-                            )}
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            {/* Recent Order Activities */}
+                            <div className="checkout-card" style={{ margin: 0, padding: '24px' }}>
+                                <h3 style={{ marginBottom: '16px' }}>Pending Order Activities</h3>
+                                {orders.filter(o => o.status === 'PENDING' || o.status === 'PAID').length === 0 ? (
+                                    <p style={{ color: 'var(--text-muted)' }}>No pending orders requiring attention.</p>
+                                ) : (
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                                                <th style={{ padding: '8px' }}>Order ID</th>
+                                                <th style={{ padding: '8px' }}>User</th>
+                                                <th style={{ padding: '8px' }}>Amount</th>
+                                                <th style={{ padding: '8px' }}>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {orders.filter(o => o.status === 'PENDING' || o.status === 'PAID').map(o => (
+                                                <tr key={o.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                    <td style={{ padding: '8px' }}>#{o.id}</td>
+                                                    <td style={{ padding: '8px' }}>{o.user?.email}</td>
+                                                    <td style={{ padding: '8px' }}>${o.totalAmount?.toFixed(2)}</td>
+                                                    <td style={{ padding: '8px', color: 'var(--success)' }}>{o.status}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {/* VIEW 2: Products CRUD */}
                 {view === 'products' && (
