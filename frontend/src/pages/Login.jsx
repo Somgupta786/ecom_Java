@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
     const { login } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const redirect = searchParams.get('redirect');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -32,7 +34,7 @@ export default function Login() {
         setSubmitting(true); // Keep submitting true briefly to prevent clicks, but actually set to false below or let context refresh
         setSubmitting(false);
         if (res.success) {
-            navigate('/');
+            navigate(redirect ? `/${redirect}` : '/');
         } else {
             setError(res.message);
         }

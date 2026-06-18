@@ -4,6 +4,17 @@ import api from '../services/api';
 
 const CartContext = createContext();
 
+const isTempOrGuestId = (id) => {
+    if (typeof id === 'string') {
+        return id.startsWith('temp-') || id.startsWith('guest-');
+    }
+    if (typeof id === 'number') {
+        return id > 1000000000000;
+    }
+    return false;
+};
+
+
 export const CartProvider = ({ children }) => {
     const { token, user } = useAuth();
     const [cartItems, setCartItems] = useState([]);
@@ -90,7 +101,7 @@ export const CartProvider = ({ children }) => {
             if (existingIdx > -1) {
                 guestCart[existingIdx].quantity += quantity;
             } else {
-                guestCart.push({ id: Date.now(), product, quantity });
+                guestCart.push({ id: `guest-${Date.now()}`, product, quantity });
             }
             localStorage.setItem('guestCart', JSON.stringify(guestCart));
             setCartItems(guestCart);
@@ -109,7 +120,7 @@ export const CartProvider = ({ children }) => {
         if (token) {
             try {
                 let realId = cartItemId;
-                if (typeof cartItemId === 'string' && cartItemId.startsWith('temp-')) {
+                if (isTempOrGuestId(cartItemId)) {
                     const res = await api.get('/cart');
                     const dbCart = res.data;
                     const tempItem = originalCart.find(item => item.id === cartItemId);
@@ -149,7 +160,7 @@ export const CartProvider = ({ children }) => {
         if (token) {
             try {
                 let realId = cartItemId;
-                if (typeof cartItemId === 'string' && cartItemId.startsWith('temp-')) {
+                if (isTempOrGuestId(cartItemId)) {
                     const res = await api.get('/cart');
                     const dbCart = res.data;
                     const tempItem = originalCart.find(item => item.id === cartItemId);

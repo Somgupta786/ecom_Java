@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 
 export default function Cart() {
-    const { cartItems, updateQuantity, removeFromCart, clearCart, getCartTotal } = useCart();
+    const { cartItems, updateQuantity, removeFromCart, clearCart, getCartTotal, loading } = useCart();
     const { token } = useAuth();
     const navigate = useNavigate();
 
@@ -16,6 +16,18 @@ export default function Cart() {
             navigate('/login?redirect=checkout');
         }
     };
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', textAlign: 'center', padding: '40px 24px' }}>
+                <div className="spinner" style={{ marginBottom: '20px' }}></div>
+                <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>Syncing Your Cart...</h2>
+                <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '15px' }}>
+                    Please wait while we merge your items with your account.
+                </p>
+            </div>
+        );
+    }
 
     if (cartItems.length === 0) {
         return (
