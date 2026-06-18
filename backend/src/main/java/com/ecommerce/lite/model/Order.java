@@ -38,6 +38,8 @@ public class Order {
 
     private String razorpayOrderId;
 
+    private Long orderNumber;
+
     @Transient
     private String razorpayKey;
 

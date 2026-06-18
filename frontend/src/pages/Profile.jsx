@@ -241,7 +241,7 @@ export default function Profile() {
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', marginBottom: '12px' }}>
                                     <div>
-                                        <strong>Order #{order.id}</strong>
+                                        <strong>Order #{order.orderNumber || order.id}</strong>
                                         <span style={{ fontSize: '13px', color: 'var(--text-muted)', marginLeft: '12px' }}>
                                             {order.orderDate ? order.orderDate.substring(0, 10) : ''}
                                         </span>

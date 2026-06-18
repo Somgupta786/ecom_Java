@@ -11,6 +11,7 @@ import java.util.List;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUserIdOrderByOrderDateDesc(Long userId);
+    long countByUserId(Long userId);
     List<Order> findByStatus(OrderStatus status);
     java.util.Optional<Order> findByTrackingNumberIgnoreCase(String trackingNumber);
 

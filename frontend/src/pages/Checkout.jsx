@@ -135,7 +135,7 @@ export default function Checkout() {
             if (paymentMethod === 'COD') {
                 clearCart();
                 await refreshProfile(); // Refresh loyalty points
-                navigate(`/checkout-success?orderId=${orderData.id}&trackingNumber=${orderData.trackingNumber}`);
+                navigate(`/checkout-success?orderId=${orderData.id}&orderNumber=${orderData.orderNumber || orderData.id}&trackingNumber=${orderData.trackingNumber}`);
             } else {
                 // 2. Configure Razorpay payment options
                 const options = {
@@ -499,7 +499,7 @@ export default function Checkout() {
                     <CheckCircle2 size={64} color="var(--success)" style={{ margin: '0 auto 20px auto' }} />
                     <h2 style={{ fontSize: '28px', marginBottom: '8px' }}>Payment Verified!</h2>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
-                        Thank you for your purchase. Your order <strong>#{placedOrder.id}</strong> has been successfully placed.
+                        Thank you for your purchase. Your order <strong>#{placedOrder.orderNumber || placedOrder.id}</strong> has been successfully placed.
                     </p>
 
                     <div style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '20px', margin: '24px 0', textAlign: 'left' }}>

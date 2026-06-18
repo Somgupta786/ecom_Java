@@ -105,6 +105,8 @@ public class OrderService {
             productRepository.save(product);
         }
 
+        long userOrderCount = orderRepository.countByUserId(user.getId());
+
         // Build Order
         Order order = Order.builder()
                 .user(user)
@@ -113,6 +115,7 @@ public class OrderService {
                 .totalAmount(totalAmount)
                 .orderDate(LocalDateTime.now())
                 .trackingNumber("TRK" + java.util.UUID.randomUUID().toString().substring(0, 12).toUpperCase())
+                .orderNumber(userOrderCount + 1)
                 .build();
 
         for (CartItem item : cartItems) {
@@ -283,7 +286,8 @@ public class OrderService {
 
     public String generateInvoiceHtml(Order order) {
         StringBuilder sb = new StringBuilder();
-        sb.append("<!DOCTYPE html><html><head><title>Invoice #").append(order.getId()).append("</title>");
+        Long displayOrderNo = order.getOrderNumber() != null ? order.getOrderNumber() : order.getId();
+        sb.append("<!DOCTYPE html><html><head><title>Invoice #").append(displayOrderNo).append("</title>");
         sb.append("<style>");
         sb.append("body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; padding: 40px; margin: 0; }");
         sb.append(".invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #334155; border-radius: 12px; background-color: #1e293b; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }");
@@ -299,7 +303,7 @@ public class OrderService {
         sb.append("<div class='invoice-box'>");
         sb.append("<div class='header'>");
         sb.append("<div><div class='logo'>E-Commerce Lite</div><div>Production Grade Receipt</div></div>");
-        sb.append("<div style='text-align: right;'><h2>INVOICE</h2>Order #").append(order.getId()).append("<br/>Date: ").append(order.getOrderDate().toString().substring(0, 10)).append("</div>");
+        sb.append("<div style='text-align: right;'><h2>INVOICE</h2>Order #").append(displayOrderNo).append("<br/>Date: ").append(order.getOrderDate().toString().substring(0, 10)).append("</div>");
         sb.append("</div>");
         sb.append("<div class='details'>");
         sb.append("<div><strong>Billed To:</strong><br/>").append(order.getUser().getFirstName()).append(" ").append(order.getUser().getLastName()).append("<br/>").append(order.getUser().getEmail()).append("</div>");

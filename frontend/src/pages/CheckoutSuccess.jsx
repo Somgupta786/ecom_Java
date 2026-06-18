@@ -11,6 +11,7 @@ export default function CheckoutSuccess() {
     const [searchParams] = useSearchParams();
     
     const orderId = searchParams.get('orderId');
+    const orderNumber = searchParams.get('orderNumber') || orderId;
     const trackingNumber = searchParams.get('trackingNumber');
     const [copied, setCopied] = useState(false);
 
@@ -32,7 +33,7 @@ export default function CheckoutSuccess() {
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', padding: '20px' }}>
             <div className="glass-panel bounce-in" style={{ maxWidth: '600px', width: '100%', textAlign: 'center', padding: '40px 32px' }}>
                 <div className="pulse-success" style={{ display: 'inline-flex', borderRadius: '50%', padding: '12px', marginBottom: '24px', backgroundColor: 'rgba(16, 185, 129, 0.15)' }}>
-                    <CheckCircle2 size={64} color="var(--success)" />
+                     <CheckCircle2 size={64} color="var(--success)" />
                 </div>
                 
                 <h2 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '10px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -46,7 +47,7 @@ export default function CheckoutSuccess() {
                 <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px', margin: '24px 0', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Order Reference</span>
-                        <strong style={{ color: 'var(--text-primary)', fontFamily: "'Outfit', sans-serif" }}>#{orderId}</strong>
+                        <strong style={{ color: 'var(--text-primary)', fontFamily: "'Outfit', sans-serif" }}>#{orderNumber}</strong>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '14px' }}>

@@ -83,7 +83,7 @@ public class OrderController {
             }
             
             Order order = orderService.verifyPayment(id, razorpayPaymentId, razorpayOrderId, razorpaySignature, "TXN_RAZORPAY");
-            headers.setLocation(java.net.URI.create("http://localhost:5173/checkout-success?orderId=" + order.getId() + "&trackingNumber=" + order.getTrackingNumber()));
+            headers.setLocation(java.net.URI.create("http://localhost:5173/checkout-success?orderId=" + order.getId() + "&orderNumber=" + (order.getOrderNumber() != null ? order.getOrderNumber() : order.getId()) + "&trackingNumber=" + order.getTrackingNumber()));
         } catch (Exception e) {
             headers.setLocation(java.net.URI.create("http://localhost:5173/checkout?error=" + java.net.URLEncoder.encode(e.getMessage() != null ? e.getMessage() : "Payment verification failed", java.nio.charset.StandardCharsets.UTF_8)));
         }

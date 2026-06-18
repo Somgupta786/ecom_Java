@@ -476,7 +476,7 @@ export default function AdminDashboard() {
                             {/* Recent Order Activities */}
                             <div className="checkout-card" style={{ margin: 0, padding: '24px' }}>
                                 <h3 style={{ marginBottom: '16px' }}>Pending Order Activities</h3>
-                                {orders.filter(o => o.status === 'PENDING' || o.status === 'PAID').length === 0 ? (
+                                {orders.filter(o => o.status === 'PENDING').length === 0 ? (
                                     <p style={{ color: 'var(--text-muted)' }}>No pending orders requiring attention.</p>
                                 ) : (
                                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
@@ -489,9 +489,9 @@ export default function AdminDashboard() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {orders.filter(o => o.status === 'PENDING' || o.status === 'PAID').map(o => (
+                                            {orders.filter(o => o.status === 'PENDING').map(o => (
                                                 <tr key={o.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                                    <td style={{ padding: '8px' }}>#{o.id}</td>
+                                                    <td style={{ padding: '8px' }}>#{o.orderNumber || o.id}</td>
                                                     <td style={{ padding: '8px' }}>{o.user?.email}</td>
                                                     <td style={{ padding: '8px' }}>${o.totalAmount?.toFixed(2)}</td>
                                                     <td style={{ padding: '8px', color: 'var(--success)' }}>{o.status}</td>
@@ -697,7 +697,7 @@ export default function AdminDashboard() {
                                     <div key={ord.id} style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '16px', backgroundColor: 'var(--bg-tertiary)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '10px' }}>
                                             <div>
-                                                <strong>Order #{ord.id}</strong> | User: {ord.user?.email}
+                                                <strong>Order #{ord.orderNumber || ord.id}</strong> | User: {ord.user?.email}
                                             </div>
                                             <div>
                                                 Status: <strong style={{ color: 'var(--accent)' }}>{ord.status}</strong>
