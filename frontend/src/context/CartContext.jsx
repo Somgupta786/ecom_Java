@@ -55,6 +55,7 @@ export const CartProvider = ({ children }) => {
 
     const addToCart = async (product, quantity = 1) => {
         const originalCart = [...cartItems];
+        const tempId = `temp-${Date.now()}`;
         
         // Optimistic Add to Local State
         setCartItems(prev => {
@@ -64,14 +65,18 @@ export const CartProvider = ({ children }) => {
                     idx === existingIdx ? { ...item, quantity: item.quantity + quantity } : item
                 );
             } else {
-                return [...prev, { id: `temp-${Date.now()}`, product, quantity }];
+                return [...prev, { id: tempId, product, quantity }];
             }
         });
 
         if (token) {
             try {
-                await api.post(`/cart/add?productId=${product.id}&quantity=${quantity}`);
-                await loadCart(false); // Background sync
+                const res = await api.post(`/cart/add?productId=${product.id}&quantity=${quantity}`);
+                const realItem = res.data;
+                // Swap the temporary item with the actual backend item (which has the correct database ID)
+                setCartItems(prev => prev.map(item => 
+                    item.id === tempId ? realItem : item
+                ));
                 return { success: true };
             } catch (err) {
                 setCartItems(originalCart); // Revert on failure
@@ -103,11 +108,24 @@ export const CartProvider = ({ children }) => {
 
         if (token) {
             try {
-                await api.put(`/cart/update/${cartItemId}?quantity=${quantity}`);
-                await loadCart(false); // Background sync
+                let realId = cartItemId;
+                if (typeof cartItemId === 'string' && cartItemId.startsWith('temp-')) {
+                    const res = await api.get('/cart');
+                    const dbCart = res.data;
+                    const tempItem = originalCart.find(item => item.id === cartItemId);
+                    if (tempItem) {
+                        const dbItem = dbCart.find(item => item.product.id === tempItem.product.id);
+                        if (dbItem) {
+                            realId = dbItem.id;
+                        } else {
+                            throw new Error('Item not found in database');
+                        }
+                    }
+                }
+                await api.put(`/cart/update/${realId}?quantity=${quantity}`);
             } catch (err) {
                 setCartItems(originalCart);
-                const message = err.response?.data?.message || 'Failed to update quantity';
+                const message = err.response?.data?.message || err.message || 'Failed to update quantity';
                 alert(message);
             }
         } else {
@@ -130,11 +148,24 @@ export const CartProvider = ({ children }) => {
 
         if (token) {
             try {
-                await api.delete(`/cart/remove/${cartItemId}`);
-                await loadCart(false); // Background sync
+                let realId = cartItemId;
+                if (typeof cartItemId === 'string' && cartItemId.startsWith('temp-')) {
+                    const res = await api.get('/cart');
+                    const dbCart = res.data;
+                    const tempItem = originalCart.find(item => item.id === cartItemId);
+                    if (tempItem) {
+                        const dbItem = dbCart.find(item => item.product.id === tempItem.product.id);
+                        if (dbItem) {
+                            realId = dbItem.id;
+                        } else {
+                            throw new Error('Item not found in database');
+                        }
+                    }
+                }
+                await api.delete(`/cart/remove/${realId}`);
             } catch (err) {
                 setCartItems(originalCart);
-                const message = err.response?.data?.message || 'Failed to remove item';
+                const message = err.response?.data?.message || err.message || 'Failed to remove item';
                 alert(message);
             }
         } else {

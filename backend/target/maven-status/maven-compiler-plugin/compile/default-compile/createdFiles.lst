@@ -54,4 +54,3 @@ com\ecommerce\lite\dto\CheckoutRequest.class
 com\ecommerce\lite\repository\CartItemRepository.class
 com\ecommerce\lite\dto\TokenRefreshRequest.class
 com\ecommerce\lite\service\CartService.class
-com\ecommerce\lite\controller\AuthController.class
