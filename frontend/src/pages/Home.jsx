@@ -101,6 +101,16 @@ export default function Home({ searchFilter }) {
         setPage(0);
     }, [selectedCategory, searchFilter, sortBy, dir]);
 
+    // Scroll to collection section when search filter is updated
+    useEffect(() => {
+        if (searchFilter) {
+            const el = document.getElementById('collection-section');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    }, [searchFilter]);
+
     // Infinite Scroll event listener
     useEffect(() => {
         const handleScroll = () => {

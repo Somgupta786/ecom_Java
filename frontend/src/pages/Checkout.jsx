@@ -63,9 +63,9 @@ export default function Checkout() {
         setCouponError('');
         if (!couponCode.trim()) return;
 
-        if (couponCode.trim().toUpperCase() === 'WELCOME10') {
+        if (couponCode.trim().toUpperCase() === 'SALETIME10') {
             setAppliedCoupon({
-                code: 'WELCOME10',
+                code: 'SALETIME10',
                 percent: 10
             });
         } else {
@@ -426,7 +426,7 @@ export default function Checkout() {
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <input 
                                     type="text" 
-                                    placeholder="WELCOME10" 
+                                    placeholder="SALETIME10" 
                                     value={couponCode} 
                                     onChange={(e) => setCouponCode(e.target.value)}
                                     style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}

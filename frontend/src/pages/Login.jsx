@@ -13,8 +13,23 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        // Email regex verification
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(email)) {
+            setError('Please enter a valid email address.');
+            return;
+        }
+
+        // Password validation (min 6 characters)
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters.');
+            return;
+        }
+
         setSubmitting(true);
         const res = await login(email, password);
+        setSubmitting(true); // Keep submitting true briefly to prevent clicks, but actually set to false below or let context refresh
         setSubmitting(false);
         if (res.success) {
             navigate('/');

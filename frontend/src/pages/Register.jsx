@@ -18,6 +18,43 @@ export default function Register() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        // First Name: letters only, 2-30 chars
+        const nameRegex = /^[a-zA-Z\s]{2,30}$/;
+        if (!nameRegex.test(firstName.trim())) {
+            setError('First name must contain only letters and be between 2 and 30 characters.');
+            return;
+        }
+
+        // Last Name: optional, if entered must be letters only, 2-30 chars
+        if (lastName.trim() && !nameRegex.test(lastName.trim())) {
+            setError('Last name must contain only letters and be between 2 and 30 characters.');
+            return;
+        }
+
+        // Email: standard pattern matching
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(email)) {
+            setError('Please enter a valid email address.');
+            return;
+        }
+
+        // Password: min 6 chars, at least one letter and one number
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
+        if (!passwordRegex.test(password)) {
+            setError('Password must be at least 6 characters and contain both letters and numbers.');
+            return;
+        }
+
+        // Referral Code: optional, if entered validate it is alphanumeric
+        if (referredBy.trim()) {
+            const refRegex = /^[a-zA-Z0-9]{3,20}$/;
+            if (!refRegex.test(referredBy.trim())) {
+                setError('Invalid referral code format. Referral codes should be alphanumeric.');
+                return;
+            }
+        }
+
         setSubmitting(true);
         const res = await register(email, password, firstName, lastName, referredBy);
         setSubmitting(false);

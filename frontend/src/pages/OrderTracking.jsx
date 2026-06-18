@@ -86,9 +86,9 @@ export default function OrderTracking() {
                             placeholder="e.g. TRK411111111111" 
                             value={trackingNumber}
                             onChange={(e) => setTrackingNumber(e.target.value)}
-                            style={{ width: '100%', paddingLeft: '44px', height: '48px' }}
+                            style={{ width: '100%', paddingLeft: trackingNumber ? '16px' : '44px', height: '48px', transition: 'padding-left 0.2s ease' }}
                         />
-                        <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+                        {!trackingNumber && <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />}
                     </div>
                     <button type="submit" className="btn btn-primary" style={{ padding: '0 28px', height: '48px' }} disabled={loading}>
                         {loading ? 'Searching...' : 'Track Package'}

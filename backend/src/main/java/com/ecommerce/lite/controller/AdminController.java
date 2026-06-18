@@ -9,11 +9,13 @@ import com.ecommerce.lite.repository.CategoryRepository;
 import com.ecommerce.lite.repository.OrderRepository;
 import com.ecommerce.lite.repository.ProductRepository;
 import com.ecommerce.lite.repository.UserRepository;
+import com.ecommerce.lite.service.CloudinaryService;
 import com.ecommerce.lite.service.OrderService;
 import com.ecommerce.lite.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
@@ -26,6 +28,7 @@ public class AdminController {
     private final ProductRepository productRepository;
     private final ProductService productService;
     private final OrderService orderService;
+    private final CloudinaryService cloudinaryService;
 
     @GetMapping("/dashboard/stats")
     public ResponseEntity<DashboardStats> getStats() {
@@ -67,5 +70,16 @@ public class AdminController {
     @PostMapping("/categories")
     public ResponseEntity<Category> createCategory(@RequestBody Category category) {
         return ResponseEntity.ok(productService.createCategory(category));
+    }
+
+    @PostMapping("/products/upload")
+    public ResponseEntity<?> uploadProductImage(@RequestParam("file") MultipartFile file) {
+        try {
+            String imageUrl = cloudinaryService.uploadImage(file);
+            return ResponseEntity.ok("{ \"imageUrl\": \"" + imageUrl + "\" }");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("{ \"error\": \"" + e.getMessage() + "\" }");
+        }
     }
 }

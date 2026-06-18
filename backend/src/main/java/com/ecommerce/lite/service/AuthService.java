@@ -47,14 +47,18 @@ public class AuthService {
 
         // Handle referral link logic
         if (request.getReferredBy() != null && !request.getReferredBy().trim().isEmpty()) {
+            System.out.println("[REFERRAL] Register request has referredBy: '" + request.getReferredBy() + "'");
             Optional<User> referrerOpt = userRepository.findByReferralCode(request.getReferredBy().trim().toUpperCase());
             if (referrerOpt.isPresent()) {
                 User referrer = referrerOpt.get();
-                // Reward referrer with 50 points, and referred user with 10 points
+                System.out.println("[REFERRAL] Referrer user found: " + referrer.getEmail() + ", current points: " + referrer.getRewardPoints());
                 referrer.setRewardPoints(referrer.getRewardPoints() + 50);
                 user.setRewardPoints(10);
                 user.setReferredBy(referrer.getReferralCode());
                 userRepository.save(referrer);
+                System.out.println("[REFERRAL] Updated referrer points to: " + referrer.getRewardPoints() + ", user points set to: " + user.getRewardPoints());
+            } else {
+                System.out.println("[REFERRAL] Referrer user NOT found for code: '" + request.getReferredBy().trim().toUpperCase() + "'");
             }
         }
 

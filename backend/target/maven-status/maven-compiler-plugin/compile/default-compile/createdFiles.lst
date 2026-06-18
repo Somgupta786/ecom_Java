@@ -25,6 +25,7 @@ com\ecommerce\lite\model\Address$AddressBuilder.class
 com\ecommerce\lite\service\ReviewService.class
 com\ecommerce\lite\model\UserRole.class
 com\ecommerce\lite\model\Order.class
+com\ecommerce\lite\service\CloudinaryService.class
 com\ecommerce\lite\config\JwtRequestFilter.class
 com\ecommerce\lite\dto\AuthResponse$AuthResponseBuilder.class
 com\ecommerce\lite\config\CustomUserDetailsService.class

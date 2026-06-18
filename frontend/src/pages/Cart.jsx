@@ -116,7 +116,7 @@ export default function Cart() {
                     </div>
 
                     <div style={{ backgroundColor: 'var(--accent-light)', padding: '12px', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '12px', margin: '16px 0', lineHeight: '1.4' }}>
-                        🎉 Tip: Use code <strong>WELCOME10</strong> during checkout to claim 10% discount on your first order!
+                        🎉 Tip: Use code <strong>SALETIME10</strong> during checkout to claim 10% discount on your first order!
                     </div>
 
                     <button 

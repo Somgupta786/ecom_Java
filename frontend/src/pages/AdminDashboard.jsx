@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { 
     TrendingUp, Users, ShoppingCart, AlertCircle, 
-    PlusCircle, Trash2, Edit, Save, PowerOff, Sun, Moon 
+    PlusCircle, Trash2, Edit, Save, PowerOff, Sun, Moon, Upload 
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -25,6 +25,7 @@ export default function AdminDashboard() {
     const [editingProduct, setEditingProduct] = useState(null);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCoupon, setNewCoupon] = useState({ code: '', discountPercent: '', expiryDate: '' });
+    const [uploading, setUploading] = useState(false);
 
     // Messages
     const [msg, setMsg] = useState('');
@@ -117,6 +118,49 @@ export default function AdminDashboard() {
             await fetchData();
         } catch (err) {
             setMsg('Error deleting product.');
+        }
+    };
+
+    const handleFileUpload = async (e, type) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        setUploading(true);
+        setMsg('');
+
+        try {
+            const res = await api.post('/admin/products/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            let data = res.data;
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (pe) {
+                    console.error('Error parsing response string', pe);
+                }
+            }
+            const url = data.imageUrl;
+            if (url) {
+                if (type === 'new') {
+                    setNewProduct(prev => ({ ...prev, imageUrl: url }));
+                } else if (type === 'edit') {
+                    setEditingProduct(prev => ({ ...prev, imageUrl: url }));
+                }
+                setMsg('Image uploaded successfully to Cloudinary!');
+            } else {
+                setMsg('Failed to extract image URL from upload response.');
+            }
+        } catch (err) {
+            console.error('Upload error', err);
+            setMsg('Failed to upload image to Cloudinary.');
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -496,8 +540,35 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label>Image URL</label>
-                                        <input type="text" value={editingProduct.imageUrl} onChange={(e) => setEditingProduct({...editingProduct, imageUrl: e.target.value})} />
+                                        <label>Image URL / Upload</label>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                            <input 
+                                                type="text" 
+                                                value={editingProduct.imageUrl} 
+                                                onChange={(e) => setEditingProduct({...editingProduct, imageUrl: e.target.value})} 
+                                                style={{ flex: 1 }}
+                                            />
+                                            <label className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, padding: '10px 16px', height: '42px', whiteSpace: 'nowrap' }}>
+                                                {uploading ? (
+                                                    <>
+                                                        <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
+                                                        <span>Uploading...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Upload size={16} />
+                                                        <span>Upload File</span>
+                                                    </>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    onChange={(e) => handleFileUpload(e, 'edit')} 
+                                                    style={{ display: 'none' }}
+                                                    disabled={uploading}
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         <button type="submit" className="btn btn-primary">Save Changes</button>
@@ -542,8 +613,36 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label>Image URL</label>
-                                        <input type="text" placeholder="https://example.com/watch.jpg" value={newProduct.imageUrl} onChange={(e) => setNewProduct({...newProduct, imageUrl: e.target.value})} />
+                                        <label>Image URL / Upload</label>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                            <input 
+                                                type="text" 
+                                                placeholder="https://example.com/watch.jpg" 
+                                                value={newProduct.imageUrl} 
+                                                onChange={(e) => setNewProduct({...newProduct, imageUrl: e.target.value})}
+                                                style={{ flex: 1 }}
+                                            />
+                                            <label className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, padding: '10px 16px', height: '42px', whiteSpace: 'nowrap' }}>
+                                                {uploading ? (
+                                                    <>
+                                                        <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
+                                                        <span>Uploading...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Upload size={16} />
+                                                        <span>Upload File</span>
+                                                    </>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    onChange={(e) => handleFileUpload(e, 'new')} 
+                                                    style={{ display: 'none' }}
+                                                    disabled={uploading}
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
                                     <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Product</button>
                                 </form>

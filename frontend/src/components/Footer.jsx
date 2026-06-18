@@ -71,7 +71,7 @@ export default function Footer() {
             </div>
             
             <div className="footer-bottom">
-                &copy; {new Date().getFullYear()} E-Commerce Lite. All rights reserved. Created with DeepMind Antigravity.
+                &copy; {new Date().getFullYear()} E-Commerce Lite. All rights reserved.
             </div>
         </footer>
     );

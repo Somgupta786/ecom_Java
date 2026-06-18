@@ -1,6 +1,7 @@
 package com.ecommerce.lite.controller;
 
 import com.ecommerce.lite.dto.*;
+import com.ecommerce.lite.model.Address;
 import com.ecommerce.lite.model.User;
 import com.ecommerce.lite.repository.UserRepository;
 import com.ecommerce.lite.service.AuthService;
@@ -43,5 +44,16 @@ public class AuthController {
         User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         return ResponseEntity.ok(user);
+    }
+
+    @PostMapping("/addresses")
+    public ResponseEntity<User> addAddress(Principal principal, @RequestBody Address address) {
+        if (principal == null) {
+            return ResponseEntity.status(401).build();
+        }
+        User user = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.getAddresses().add(address);
+        return ResponseEntity.ok(userRepository.save(user));
     }
 }

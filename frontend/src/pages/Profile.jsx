@@ -52,11 +52,9 @@ export default function Profile() {
         e.preventDefault();
         setAddressMsg('');
 
-        // Simulating appending address by saving back to order shipping structures or updating profile
         try {
-            const updatedAddresses = [...user.addresses, { street, city, state, zipCode, country, phone }];
-            
-            user.addresses = updatedAddresses;
+            const newAddress = { street, city, state, zipCode, country, phone };
+            await api.post('/auth/addresses', newAddress);
             setAddressMsg('Address added successfully!');
             setShowAddressForm(false);
             setStreet('');

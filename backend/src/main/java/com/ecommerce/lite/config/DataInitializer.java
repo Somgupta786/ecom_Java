@@ -455,9 +455,9 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // 3. Seed Default Coupon
-        if (couponRepository.count() == 0) {
+        if (couponRepository.findByCodeIgnoreCase("SALETIME10").isEmpty()) {
             Coupon welcomeCoupon = Coupon.builder()
-                    .code("WELCOME10")
+                    .code("SALETIME10")
                     .discountPercent(10)
                     .isActive(true)
                     .expiryDate(LocalDateTime.now().plusMonths(3))
