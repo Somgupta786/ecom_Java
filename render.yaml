@@ -2,11 +2,9 @@ services:
   # Backend Web Service
   - type: web
     name: ecom-java-backend
-    env: docker
+    runtime: docker
     dockerfilePath: Dockerfile
     dockerContext: backend
-    # Note: On Render, the path to dockerfilePath is relative to dockerContext.
-    # Since we set dockerContext to 'backend', the Dockerfile is in 'backend/Dockerfile', which relative to 'backend' is just 'Dockerfile'.
     plan: free
     envVars:
       - key: PORT
@@ -34,9 +32,8 @@ services:
         sync: false
 
   # Frontend Static Site
-  - type: web
+  - type: static
     name: ecom-java-frontend
-    env: static
     rootDir: frontend
     buildCommand: npm run build
     publishPath: dist
