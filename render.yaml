@@ -17,6 +17,8 @@ services:
         value: npg_DCNV2A0EPxqc
       - key: ALLOWED_ORIGINS
         value: https://ecom-java-frontend.onrender.com
+      - key: FRONTEND_URL
+        value: https://ecom-java-frontend.onrender.com
       - key: JWT_SECRET
         generateValue: true
       # The following integration variables should be set by the user in the Render dashboard:

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
+import org.springframework.beans.factory.annotation.Value;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -23,6 +24,9 @@ import java.util.ArrayList;
 public class OrderController {
 
     private final OrderService orderService;
+
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
 
     @PostMapping
     public ResponseEntity<Order> placeOrder(Principal principal, @Valid @RequestBody CheckoutRequest request) {
@@ -84,14 +88,14 @@ public class OrderController {
         try {
             if (errorCode != null || errorDesc != null) {
                 String error = errorDesc != null ? errorDesc : "Payment failed";
-                headers.setLocation(java.net.URI.create("http://localhost:5173/checkout?error=" + java.net.URLEncoder.encode(error, java.nio.charset.StandardCharsets.UTF_8)));
+                headers.setLocation(java.net.URI.create(frontendUrl + "/checkout?error=" + java.net.URLEncoder.encode(error, java.nio.charset.StandardCharsets.UTF_8)));
                 return new ResponseEntity<>(headers, HttpStatus.SEE_OTHER);
             }
             
             Order order = orderService.verifyPayment(id, razorpayPaymentId, razorpayOrderId, razorpaySignature, "TXN_RAZORPAY");
-            headers.setLocation(java.net.URI.create("http://localhost:5173/checkout-success?orderId=" + order.getId() + "&orderNumber=" + (order.getOrderNumber() != null ? order.getOrderNumber() : order.getId()) + "&trackingNumber=" + order.getTrackingNumber()));
+            headers.setLocation(java.net.URI.create(frontendUrl + "/checkout-success?orderId=" + order.getId() + "&orderNumber=" + (order.getOrderNumber() != null ? order.getOrderNumber() : order.getId()) + "&trackingNumber=" + order.getTrackingNumber()));
         } catch (Exception e) {
-            headers.setLocation(java.net.URI.create("http://localhost:5173/checkout?error=" + java.net.URLEncoder.encode(e.getMessage() != null ? e.getMessage() : "Payment verification failed", java.nio.charset.StandardCharsets.UTF_8)));
+            headers.setLocation(java.net.URI.create(frontendUrl + "/checkout?error=" + java.net.URLEncoder.encode(e.getMessage() != null ? e.getMessage() : "Payment verification failed", java.nio.charset.StandardCharsets.UTF_8)));
         }
         return new ResponseEntity<>(headers, HttpStatus.SEE_OTHER);
     }
