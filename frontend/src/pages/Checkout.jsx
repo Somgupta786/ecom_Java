@@ -6,7 +6,7 @@ import { MapPin, CreditCard, CheckCircle2, Ticket, Award, Printer, Package } fro
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 export default function Checkout() {
     const { cartItems, getCartTotal, clearCart } = useCart();

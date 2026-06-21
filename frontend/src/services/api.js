@@ -2,8 +2,10 @@ import axios from 'axios';
 
 let activeAccessToken = null;
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+
 const api = axios.create({
-    baseURL: 'http://localhost:8080/api',
+    baseURL: API_BASE,
     withCredentials: true
 });
 
@@ -66,7 +68,7 @@ api.interceptors.response.use(
 
             try {
                 // Perform silent refresh call to backend (sends HttpOnly cookie)
-                const res = await axios.post('http://localhost:8080/api/auth/refresh', {}, {
+                const res = await axios.post(`${API_BASE}/auth/refresh`, {}, {
                     withCredentials: true
                 });
                 const { accessToken } = res.data;

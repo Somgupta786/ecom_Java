@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle2, Clipboard, Printer, Compass, ShoppingBag } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 export default function CheckoutSuccess() {
     const { token } = useAuth();
