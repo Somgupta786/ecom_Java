@@ -19,6 +19,10 @@ services:
         value: https://ecom-java-frontend.onrender.com
       - key: FRONTEND_URL
         value: https://ecom-java-frontend.onrender.com
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: None
       - key: JWT_SECRET
         generateValue: true
       # The following integration variables should be set by the user in the Render dashboard:

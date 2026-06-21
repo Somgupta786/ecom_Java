@@ -36,6 +36,9 @@ app:
   cors:
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,http://localhost:8080}
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  cookie:
+    secure: ${COOKIE_SECURE:false}
+    same-site: ${COOKIE_SAME_SITE:Lax}
   jwt:
     secret: ${JWT_SECRET:ZDJhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejEyMzQ1Njc4OTA=}
     expiration-ms: 3600000 # 1 Hour
