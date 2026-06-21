@@ -38,6 +38,13 @@ public class DataInitializer implements CommandLineRunner {
                     .isActive(true)
                     .build();
             userRepository.save(admin);
+        } else {
+            userRepository.findByEmail("admin@ecommerce.com").ifPresent(admin -> {
+                if (admin.getReferralCode() == null || admin.getReferralCode().trim().isEmpty()) {
+                    admin.setReferralCode("ADMINREF");
+                    userRepository.save(admin);
+                }
+            });
         }
 
         // 2. Seed Regular User
@@ -53,6 +60,27 @@ public class DataInitializer implements CommandLineRunner {
                     .isActive(true)
                     .build();
             userRepository.save(user);
+        } else {
+            userRepository.findByEmail("user@ecommerce.com").ifPresent(user -> {
+                if (user.getReferralCode() == null || user.getReferralCode().trim().isEmpty()) {
+                    user.setReferralCode("USERREF");
+                    userRepository.save(user);
+                }
+            });
+        }
+
+        // 3. Assign referral codes to any other existing users who don't have one
+        List<User> allUsers = userRepository.findAll();
+        for (User u : allUsers) {
+            if (u.getReferralCode() == null || u.getReferralCode().trim().isEmpty()) {
+                String generatedCode = java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                while (userRepository.findByReferralCode(generatedCode).isPresent()) {
+                    generatedCode = java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                }
+                u.setReferralCode(generatedCode);
+                userRepository.save(u);
+                System.out.println("[REFERRAL INITIALIZER] Assigned code " + generatedCode + " to user: " + u.getEmail());
+            }
         }
 
         // 2. Seed Default Categories & Products

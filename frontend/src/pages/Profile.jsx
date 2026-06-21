@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Award, Share2, Clipboard, Printer, Package, XCircle } from 'lucide-react';
+import { MapPin, Award, Share2, Clipboard, Printer, Package, XCircle, Edit, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 
@@ -23,6 +23,7 @@ export default function Profile() {
     const [showAddressForm, setShowAddressForm] = useState(false);
     const [submittingAddress, setSubmittingAddress] = useState(false);
     const [cancellingId, setCancellingId] = useState(null);
+    const [editingIndex, setEditingIndex] = useState(null);
 
     // Referral state
     const [copied, setCopied] = useState(false);
@@ -95,9 +96,15 @@ export default function Profile() {
 
         try {
             const newAddress = { street, city, state, zipCode, country, phone };
-            await api.post('/auth/addresses', newAddress);
-            showToast('Address added successfully!', 'success');
+            if (editingIndex !== null) {
+                await api.put(`/auth/addresses/${editingIndex}`, newAddress);
+                showToast('Address updated successfully!', 'success');
+            } else {
+                await api.post('/auth/addresses', newAddress);
+                showToast('Address added successfully!', 'success');
+            }
             setShowAddressForm(false);
+            setEditingIndex(null);
             setStreet('');
             setCity('');
             setState('');
@@ -108,6 +115,28 @@ export default function Profile() {
             showToast('Failed to update address book', 'error');
         } finally {
             setSubmittingAddress(false);
+        }
+    };
+
+    const handleEditClick = (addr, idx) => {
+        setStreet(addr.street);
+        setCity(addr.city);
+        setState(addr.state);
+        setZipCode(addr.zipCode);
+        setCountry(addr.country || 'United States');
+        setPhone(addr.phone || '');
+        setEditingIndex(idx);
+        setShowAddressForm(true);
+    };
+
+    const handleDeleteAddress = async (idx) => {
+        if (!window.confirm('Are you sure you want to delete this address?')) return;
+        try {
+            await api.delete(`/auth/addresses/${idx}`);
+            showToast('Address deleted successfully!', 'success');
+            await refreshProfile();
+        } catch (err) {
+            showToast('Failed to delete address', 'error');
         }
     };
 
@@ -206,15 +235,104 @@ export default function Profile() {
                             <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No saved addresses.</p>
                         ) : (
                             user?.addresses?.map((addr, idx) => (
-                                <div key={idx} style={{ fontSize: '13px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                                    {addr.street}, {addr.city}, {addr.state} {addr.zipCode}, {addr.country}
+                                <div 
+                                    key={idx} 
+                                    style={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center', 
+                                        fontSize: '13px', 
+                                        borderBottom: '1px solid var(--border-color)', 
+                                        padding: '8px 4px',
+                                        gap: '12px',
+                                        transition: 'background-color 0.2s ease-in-out'
+                                    }}
+                                    className="address-item"
+                                >
+                                    <div style={{ flex: 1 }}>
+                                        <div><strong>{addr.street}</strong></div>
+                                        <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '2px' }}>
+                                            {addr.city}, {addr.state} {addr.zipCode}, {addr.country}
+                                        </div>
+                                        {addr.phone && (
+                                            <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>
+                                                Phone: {addr.phone}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button 
+                                            onClick={() => handleEditClick(addr, idx)}
+                                            style={{ 
+                                                background: 'none', 
+                                                border: 'none', 
+                                                cursor: 'pointer', 
+                                                color: 'var(--text-secondary)',
+                                                padding: '4px',
+                                                borderRadius: '4px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'color 0.2s, background-color 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.color = 'var(--accent)';
+                                                e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.1)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.color = 'var(--text-secondary)';
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                            }}
+                                            title="Edit Address"
+                                        >
+                                            <Edit size={15} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteAddress(idx)}
+                                            style={{ 
+                                                background: 'none', 
+                                                border: 'none', 
+                                                cursor: 'pointer', 
+                                                color: 'var(--text-secondary)',
+                                                padding: '4px',
+                                                borderRadius: '4px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'color 0.2s, background-color 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.color = 'var(--error)';
+                                                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.color = 'var(--text-secondary)';
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                            }}
+                                            title="Delete Address"
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </div>
                                 </div>
                             ))
                         )}
                     </div>
 
                     {!showAddressForm ? (
-                        <button onClick={() => setShowAddressForm(true)} className="btn btn-outline btn-sm" style={{ width: '100%', marginTop: '14px' }}>
+                        <button 
+                            onClick={() => {
+                                setShowAddressForm(true);
+                                setEditingIndex(null);
+                                setStreet('');
+                                setCity('');
+                                setState('');
+                                setZipCode('');
+                                setPhone('');
+                            }} 
+                            className="btn btn-outline btn-sm" 
+                            style={{ width: '100%', marginTop: '14px' }}
+                        >
                             Add New Address
                         </button>
                     ) : (
@@ -271,9 +389,23 @@ export default function Profile() {
                                         <div className="spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px', borderTopColor: '#fff', animationDuration: '0.6s' }}></div>
                                         <span>Saving Address...</span>
                                     </>
-                                ) : 'Save Address'}
+                                ) : (editingIndex !== null ? 'Update Address' : 'Save Address')}
                             </button>
-                            <button type="button" onClick={() => setShowAddressForm(false)} className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: '8px' }} disabled={submittingAddress}>
+                            <button 
+                                type="button" 
+                                onClick={() => {
+                                    setShowAddressForm(false);
+                                    setEditingIndex(null);
+                                    setStreet('');
+                                    setCity('');
+                                    setState('');
+                                    setZipCode('');
+                                    setPhone('');
+                                }} 
+                                className="btn btn-secondary btn-sm" 
+                                style={{ width: '100%', marginTop: '8px' }} 
+                                disabled={submittingAddress}
+                            >
                                 Cancel
                             </button>
                         </form>

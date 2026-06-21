@@ -116,7 +116,7 @@ export default function OrderTracking() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
                         <div>
                             <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Active Order</span>
-                            <h2 style={{ fontSize: '22px', marginTop: '4px' }}>#{order.id}</h2>
+                            <h2 style={{ fontSize: '22px', marginTop: '4px' }}>#{order.orderNumber || order.id}</h2>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                             <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Status</span>

@@ -97,6 +97,34 @@ public class AuthController {
         return ResponseEntity.ok(userRepository.save(user));
     }
 
+    @PutMapping("/addresses/{index}")
+    public ResponseEntity<User> editAddress(Principal principal, @PathVariable int index, @RequestBody Address address) {
+        if (principal == null) {
+            return ResponseEntity.status(401).build();
+        }
+        User user = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (index >= 0 && index < user.getAddresses().size()) {
+            user.getAddresses().set(index, address);
+            return ResponseEntity.ok(userRepository.save(user));
+        }
+        return ResponseEntity.badRequest().build();
+    }
+
+    @DeleteMapping("/addresses/{index}")
+    public ResponseEntity<User> deleteAddress(Principal principal, @PathVariable int index) {
+        if (principal == null) {
+            return ResponseEntity.status(401).build();
+        }
+        User user = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (index >= 0 && index < user.getAddresses().size()) {
+            user.getAddresses().remove(index);
+            return ResponseEntity.ok(userRepository.save(user));
+        }
+        return ResponseEntity.badRequest().build();
+    }
+
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
