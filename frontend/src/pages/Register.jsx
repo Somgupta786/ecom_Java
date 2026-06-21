@@ -12,11 +12,16 @@ export default function Register() {
     const [password, setPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [referredBy, setReferredBy] = useState(searchParams.get('ref') || '');
+    
+    const getInitialReferral = () => {
+        const ref = searchParams.get('ref');
+        return (ref && ref !== 'null' && ref !== 'undefined') ? ref : '';
+    };
+    const [referredBy, setReferredBy] = useState(getInitialReferral());
 
     useEffect(() => {
         const ref = searchParams.get('ref');
-        if (ref) {
+        if (ref && ref !== 'null' && ref !== 'undefined') {
             setReferredBy(ref);
         }
     }, [searchParams]);
@@ -37,6 +42,8 @@ export default function Register() {
     });
     const [isCheckingEmail, setIsCheckingEmail] = useState(false);
     const [emailAvailable, setEmailAvailable] = useState(null); // null, true, false
+    const [isCheckingReferral, setIsCheckingReferral] = useState(false);
+    const [referralValid, setReferralValid] = useState(null); // null, true, false
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
 
@@ -119,14 +126,38 @@ export default function Register() {
     useEffect(() => {
         if (!referredBy.trim()) {
             setErrors(prev => ({ ...prev, referredBy: '' }));
+            setReferralValid(null);
             return;
         }
+
         const refRegex = /^[a-zA-Z0-9]{3,20}$/;
         if (!refRegex.test(referredBy.trim())) {
             setErrors(prev => ({ ...prev, referredBy: 'Referral code must be alphanumeric (3-20 chars).' }));
-        } else {
-            setErrors(prev => ({ ...prev, referredBy: '' }));
+            setReferralValid(false);
+            return;
         }
+
+        setErrors(prev => ({ ...prev, referredBy: '' }));
+        setReferralValid(null);
+
+        const delayDebounce = setTimeout(async () => {
+            setIsCheckingReferral(true);
+            try {
+                const res = await api.get(`/auth/check-referral?code=${encodeURIComponent(referredBy.trim())}`);
+                if (!res.data.exists) {
+                    setErrors(prev => ({ ...prev, referredBy: 'Referral code not found.' }));
+                    setReferralValid(false);
+                } else {
+                    setReferralValid(true);
+                }
+            } catch (err) {
+                console.error('Error checking referral code', err);
+            } finally {
+                setIsCheckingReferral(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounce);
     }, [referredBy]);
 
     const handleSubmit = async (e) => {
@@ -134,9 +165,14 @@ export default function Register() {
         setSubmitError('');
 
         // Block submit if validation fails
-        const hasErrors = Object.values(errors).some(msg => msg !== '') || emailAvailable === false;
+        const hasErrors = 
+            Object.values(errors).some(msg => msg !== '') || 
+            emailAvailable !== true || 
+            isCheckingEmail ||
+            (referredBy.trim() !== '' && (referralValid !== true || isCheckingReferral));
+
         if (hasErrors) {
-            setSubmitError('Please fix the errors before registering.');
+            setSubmitError('Please fix the errors or wait for validation to complete before registering.');
             return;
         }
 
@@ -151,11 +187,14 @@ export default function Register() {
         }
     };
 
-    const hasValidationErrors = Object.values(errors).some(msg => msg !== '') || 
-                                 emailAvailable === false || 
-                                 !firstName || 
-                                 !email || 
-                                 !password;
+    const hasValidationErrors = 
+        Object.values(errors).some(msg => msg !== '') || 
+        emailAvailable !== true || 
+        isCheckingEmail ||
+        (referredBy.trim() !== '' && (referralValid !== true || isCheckingReferral)) ||
+        !firstName || 
+        !email || 
+        !password;
 
     return (
         <div className="auth-box" style={{ maxWidth: '460px' }}>
@@ -242,8 +281,10 @@ export default function Register() {
                         }}
                         placeholder="REFERRALCODE123"
                     />
-                    {touched.referredBy && errors.referredBy && <span style={{ color: 'var(--error)', fontSize: '11px', marginTop: '4px', display: 'block' }}>{errors.referredBy}</span>}
-                    {(!touched.referredBy || !errors.referredBy) && (
+                    {touched.referredBy && isCheckingReferral && <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>Checking code...</span>}
+                    {touched.referredBy && !isCheckingReferral && referralValid === true && <span style={{ color: 'var(--success)', fontSize: '11px', marginTop: '4px', display: 'block', fontWeight: 'bold' }}>✓ Referral code is valid!</span>}
+                    {touched.referredBy && !isCheckingReferral && errors.referredBy && <span style={{ color: 'var(--error)', fontSize: '11px', marginTop: '4px', display: 'block' }}>{errors.referredBy}</span>}
+                    {(!touched.referredBy || (!errors.referredBy && !referralValid)) && (
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                             Enter a friend's code to reward them with 50 points, and you'll get 10 points!
                         </span>

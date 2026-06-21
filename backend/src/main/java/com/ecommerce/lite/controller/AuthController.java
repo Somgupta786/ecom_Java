@@ -37,6 +37,14 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/check-referral")
+    public ResponseEntity<java.util.Map<String, Boolean>> checkReferralCode(@RequestParam String code) {
+        boolean exists = userRepository.findByReferralCode(code.trim().toUpperCase()).isPresent();
+        java.util.Map<String, Boolean> response = new java.util.HashMap<>();
+        response.put("exists", exists);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
         AuthResponse authResponse = authService.register(request);
