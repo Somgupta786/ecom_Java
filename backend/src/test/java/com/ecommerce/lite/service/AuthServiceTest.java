@@ -114,4 +114,18 @@ public class AuthServiceTest {
         User deletedUser = userRepository.findByEmail("addressuser@example.com").orElseThrow();
         assertEquals(0, deletedUser.getAddresses().size());
     }
+
+    @Test
+    public void testInvalidReferralCodeThrowsException() {
+        RegisterRequest req = new RegisterRequest();
+        req.setEmail("invalidref@example.com");
+        req.setPassword("password123");
+        req.setFirstName("Invalid");
+        req.setLastName("Ref");
+        req.setReferredBy("NONEXISTENTCODE");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            authService.register(req);
+        }, "Should throw exception for nonexistent referral code");
+    }
 }

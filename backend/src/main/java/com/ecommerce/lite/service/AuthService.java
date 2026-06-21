@@ -59,6 +59,7 @@ public class AuthService {
                 System.out.println("[REFERRAL] Updated referrer points to: " + referrer.getRewardPoints() + ", user points set to: " + user.getRewardPoints());
             } else {
                 System.out.println("[REFERRAL] Referrer user NOT found for code: '" + request.getReferredBy().trim().toUpperCase() + "'");
+                throw new IllegalArgumentException("Invalid referral code");
             }
         }
 
