@@ -56,6 +56,14 @@ export default function Profile() {
     const handleAddAddress = async (e) => {
         e.preventDefault();
         setAddressMsg('');
+        
+        // Validate phone number has at least 10 digits
+        const phoneDigits = phone.replace(/\D/g, '');
+        if (phoneDigits.length < 10) {
+            showToast('Phone number must contain at least 10 digits.', 'error');
+            return;
+        }
+        
         setSubmittingAddress(true);
 
         try {
@@ -221,13 +229,13 @@ export default function Profile() {
                                     value={zipCode}
                                     onChange={(e) => setZipCode(e.target.value)}
                                 />
-                                <input 
+                                 <input 
                                     type="text" 
                                     required 
                                     disabled={submittingAddress}
                                     placeholder="Phone" 
                                     value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
+                                    onChange={(e) => setPhone(e.target.value.replace(/[^0-9\s\-()+]/g, ''))}
                                 />
                             </div>
                             <button type="submit" className="btn btn-primary btn-sm" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }} disabled={submittingAddress}>

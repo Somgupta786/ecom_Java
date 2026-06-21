@@ -1745,6 +1745,7 @@ input:disabled, select:disabled, textarea:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -1788,6 +1789,7 @@ input:disabled, select:disabled, textarea:disabled {
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .coupon-list-item:hover {

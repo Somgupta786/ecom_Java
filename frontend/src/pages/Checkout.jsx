@@ -135,6 +135,14 @@ export default function Checkout() {
 
     const handleAddressSubmit = (e) => {
         e.preventDefault();
+        
+        // Validate phone number has at least 10 digits
+        const phoneDigits = phone.replace(/\D/g, '');
+        if (phoneDigits.length < 10) {
+            showToast('Phone number must contain at least 10 digits.', 'error');
+            return;
+        }
+        
         setStep(2);
     };
 
@@ -330,7 +338,7 @@ export default function Checkout() {
                                 type="tel" 
                                 required 
                                 value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
+                                onChange={(e) => setPhone(e.target.value.replace(/[^0-9\s\-()+]/g, ''))}
                                 placeholder="+1 (555) 019-2834"
                             />
                         </div>

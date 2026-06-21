@@ -1,17 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
 export default function Register() {
     const { register } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [referredBy, setReferredBy] = useState('');
+    const [referredBy, setReferredBy] = useState(searchParams.get('ref') || '');
+
+    useEffect(() => {
+        const ref = searchParams.get('ref');
+        if (ref) {
+            setReferredBy(ref);
+        }
+    }, [searchParams]);
     
     const [errors, setErrors] = useState({
         firstName: '',
