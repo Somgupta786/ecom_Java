@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ProductCard from '../components/ProductCard';
 import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../services/api';
@@ -124,19 +124,44 @@ export default function Home({ searchFilter }) {
         }
     }, [searchFilter]);
 
-    // Infinite Scroll event listener
+    const loaderRef = useRef(null);
+    const lastRequestedPage = useRef(0);
+
+    // Reset lastRequestedPage when category/search/sortBy/dir changes
     useEffect(() => {
-        const handleScroll = () => {
-            // Check if user is scrolled within 700px of the page bottom to trigger load early (accounts for bottom recommendations)
-            if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 700) {
-                if (!loading && page < totalPages - 1) {
+        lastRequestedPage.current = 0;
+    }, [selectedCategory, searchFilter, sortBy, dir]);
+
+    // High-performance mobile-friendly Intersection Observer for seamless infinite scroll
+    useEffect(() => {
+        if (loading) return;
+        if (page >= totalPages - 1) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            const target = entries[0];
+            if (target.isIntersecting) {
+                // Only load next page if we haven't already requested it and we are not currently loading
+                if (page < totalPages - 1 && lastRequestedPage.current === page) {
+                    lastRequestedPage.current = page + 1;
                     setPage(prev => prev + 1);
                 }
             }
-        };
+        }, {
+            root: null, // uses the browser viewport
+            rootMargin: '0px', // trigger exactly when reaching the bottom of the last product
+            threshold: 0.1
+        });
 
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        const currentTarget = loaderRef.current;
+        if (currentTarget) {
+            observer.observe(currentTarget);
+        }
+
+        return () => {
+            if (currentTarget) {
+                observer.unobserve(currentTarget);
+            }
+        };
     }, [loading, page, totalPages]);
 
     const handleCategoryClick = (categoryId) => {
@@ -282,6 +307,9 @@ export default function Home({ searchFilter }) {
                             <ProductCard key={product.id} product={product} />
                         ))}
                     </div>
+
+                    {/* Invisible trigger element for Intersection Observer */}
+                    <div ref={loaderRef} style={{ height: '10px', margin: '5px 0' }} />
 
                     {/* Small loader at bottom when fetching more pages */}
                     {page > 0 && loading && (
