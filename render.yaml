@@ -4,7 +4,7 @@ services:
     name: ecom-java-backend
     env: docker
     dockerfilePath: Dockerfile
-    dockerContext: .
+    dockerContext: backend
     # Note: On Render, the path to dockerfilePath is relative to dockerContext.
     # Since we set dockerContext to 'backend', the Dockerfile is in 'backend/Dockerfile', which relative to 'backend' is just 'Dockerfile'.
     plan: free
