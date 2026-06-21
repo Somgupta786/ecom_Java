@@ -3,7 +3,7 @@ services:
   - type: web
     name: ecom-java-backend
     runtime: docker
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/Dockerfile
     dockerContext: backend
     plan: free
     envVars:
@@ -45,3 +45,5 @@ services:
     envVars:
       - key: VITE_API_BASE_URL
         value: https://ecom-java-backend.onrender.com/api
+      - key: NODE_VERSION
+        value: 20
