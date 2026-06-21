@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useAuth } from './AuthContext';
 import api from '../services/api';
+import { useToast } from './ToastContext';
 
 const CartContext = createContext();
 
@@ -17,6 +18,7 @@ const isTempOrGuestId = (id) => {
 
 export const CartProvider = ({ children }) => {
     const { token, user } = useAuth();
+    const { showToast } = useToast();
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -84,14 +86,16 @@ export const CartProvider = ({ children }) => {
             try {
                 const res = await api.post(`/cart/add?productId=${product.id}&quantity=${quantity}`);
                 const realItem = res.data;
-                // Swap the temporary item with the actual backend item (which has the correct database ID)
+                // Swap the temporary item with the actual database item (which has the correct database ID)
                 setCartItems(prev => prev.map(item => 
                     item.id === tempId ? realItem : item
                 ));
+                showToast(`${product.name} added to cart!`, 'success');
                 return { success: true };
             } catch (err) {
                 setCartItems(originalCart); // Revert on failure
                 const message = err.response?.data?.message || 'Failed to add item';
+                showToast(message, 'error');
                 return { success: false, message };
             }
         } else {
@@ -105,6 +109,7 @@ export const CartProvider = ({ children }) => {
             }
             localStorage.setItem('guestCart', JSON.stringify(guestCart));
             setCartItems(guestCart);
+            showToast(`${product.name} added to cart!`, 'success');
             return { success: true };
         }
     };
@@ -137,7 +142,7 @@ export const CartProvider = ({ children }) => {
             } catch (err) {
                 setCartItems(originalCart);
                 const message = err.response?.data?.message || err.message || 'Failed to update quantity';
-                alert(message);
+                showToast(message, 'error');
             }
         } else {
             // Guest logic
@@ -174,10 +179,11 @@ export const CartProvider = ({ children }) => {
                     }
                 }
                 await api.delete(`/cart/remove/${realId}`);
+                showToast('Item removed from cart.', 'info');
             } catch (err) {
                 setCartItems(originalCart);
                 const message = err.response?.data?.message || err.message || 'Failed to remove item';
-                alert(message);
+                showToast(message, 'error');
             }
         } else {
             // Guest logic
@@ -185,6 +191,7 @@ export const CartProvider = ({ children }) => {
             guestCart = guestCart.filter(item => item.id !== cartItemId);
             localStorage.setItem('guestCart', JSON.stringify(guestCart));
             setCartItems(guestCart);
+            showToast('Item removed from cart.', 'info');
         }
     };
 
@@ -195,14 +202,17 @@ export const CartProvider = ({ children }) => {
         if (token) {
             try {
                 await api.delete('/cart/clear');
+                showToast('Cart cleared.', 'info');
                 await loadCart(false); // Background sync
             } catch (err) {
                 setCartItems(originalCart);
+                showToast('Failed to clear cart.', 'error');
                 console.error('Error clearing cart in DB', err);
             }
         } else {
             localStorage.removeItem('guestCart');
             setCartItems([]);
+            showToast('Cart cleared.', 'info');
         }
     };
 

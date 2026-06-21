@@ -37,7 +37,7 @@ export default function Home({ searchFilter }) {
     const [dir, setDir] = useState('desc');
     const [loading, setLoading] = useState(true);
 
-    // Fetch categories on mount
+    // Fetch categories once on mount
     useEffect(() => {
         const fetchCategories = async () => {
             try {
@@ -48,6 +48,11 @@ export default function Home({ searchFilter }) {
             }
         };
 
+        fetchCategories();
+    }, []);
+
+    // Fetch recommendations on mount
+    useEffect(() => {
         const fetchRecommendations = async () => {
             try {
                 const res = await api.get('/products/recommendations');
@@ -57,7 +62,6 @@ export default function Home({ searchFilter }) {
             }
         };
 
-        fetchCategories();
         fetchRecommendations();
     }, []);
 
@@ -100,6 +104,11 @@ export default function Home({ searchFilter }) {
     useEffect(() => {
         setPage(0);
     }, [selectedCategory, searchFilter, sortBy, dir]);
+
+    // Reset selected category when search filter changes
+    useEffect(() => {
+        setSelectedCategory(null);
+    }, [searchFilter]);
 
     // Scroll to collection section when search filter is updated
     useEffect(() => {

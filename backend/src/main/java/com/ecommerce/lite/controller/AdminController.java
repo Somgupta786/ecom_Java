@@ -5,10 +5,12 @@ import com.ecommerce.lite.model.Category;
 import com.ecommerce.lite.model.Order;
 import com.ecommerce.lite.model.OrderStatus;
 import com.ecommerce.lite.model.Product;
+import com.ecommerce.lite.model.Synonym;
 import com.ecommerce.lite.repository.CategoryRepository;
 import com.ecommerce.lite.repository.OrderRepository;
 import com.ecommerce.lite.repository.ProductRepository;
 import com.ecommerce.lite.repository.UserRepository;
+import com.ecommerce.lite.repository.SynonymRepository;
 import com.ecommerce.lite.service.CloudinaryService;
 import com.ecommerce.lite.service.OrderService;
 import com.ecommerce.lite.service.ProductService;
@@ -29,6 +31,7 @@ public class AdminController {
     private final ProductService productService;
     private final OrderService orderService;
     private final CloudinaryService cloudinaryService;
+    private final SynonymRepository synonymRepository;
 
     @GetMapping("/dashboard/stats")
     public ResponseEntity<DashboardStats> getStats() {
@@ -81,5 +84,21 @@ public class AdminController {
             e.printStackTrace();
             return ResponseEntity.status(500).body("{ \"error\": \"" + e.getMessage() + "\" }");
         }
+    }
+
+    @GetMapping("/synonyms")
+    public ResponseEntity<List<Synonym>> getAllSynonyms() {
+        return ResponseEntity.ok(synonymRepository.findAll());
+    }
+
+    @PostMapping("/synonyms")
+    public ResponseEntity<Synonym> createSynonym(@RequestBody Synonym synonym) {
+        return ResponseEntity.ok(synonymRepository.save(synonym));
+    }
+
+    @DeleteMapping("/synonyms/{id}")
+    public ResponseEntity<?> deleteSynonym(@PathVariable Long id) {
+        synonymRepository.deleteById(id);
+        return ResponseEntity.ok("{ \"message\": \"Synonym deleted successfully\" }");
     }
 }

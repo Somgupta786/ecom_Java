@@ -1,6 +1,7 @@
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\controller\ReviewController.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\repository\CartItemRepository.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\controller\ProductController.java
+C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\repository\SynonymRepository.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\dto\TokenRefreshResponse.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\config\JwtUtils.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\config\SecurityConfig.java
@@ -25,6 +26,7 @@ C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\config\J
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\controller\AdminController.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\service\AuthService.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\model\Product.java
+C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\model\Synonym.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\service\ProductService.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\repository\UserRepository.java
 C:\Users\Som\Downloads\tryAnti\backend\src\main\java\com\ecommerce\lite\repository\CategoryRepository.java

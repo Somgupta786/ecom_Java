@@ -4,12 +4,14 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { MapPin, CreditCard, CheckCircle2, Ticket, Award, Printer, Package } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 const API_BASE = 'http://localhost:8080/api';
 
 export default function Checkout() {
     const { cartItems, getCartTotal, clearCart } = useCart();
     const { token, user, refreshProfile } = useAuth();
+    const { showToast } = useToast();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
@@ -45,6 +47,7 @@ export default function Checkout() {
     const [cardCvv, setCardCvv] = useState('123');
     const [paymentMethod, setPaymentMethod] = useState('RAZORPAY'); // 'RAZORPAY' or 'COD'
     const [paymentProcessing, setPaymentProcessing] = useState(false);
+    const [applyingCoupon, setApplyingCoupon] = useState(false);
     
     // Result state
     const [placedOrder, setPlacedOrder] = useState(null);
@@ -63,15 +66,21 @@ export default function Checkout() {
         setCouponError('');
         if (!couponCode.trim()) return;
 
-        if (couponCode.trim().toUpperCase() === 'SALETIME10') {
-            setAppliedCoupon({
-                code: 'SALETIME10',
-                percent: 10
-            });
-        } else {
-            setCouponError('Invalid promo code');
-            setAppliedCoupon(null);
-        }
+        setApplyingCoupon(true);
+        setTimeout(() => {
+            if (couponCode.trim().toUpperCase() === 'SALETIME10') {
+                setAppliedCoupon({
+                    code: 'SALETIME10',
+                    percent: 10
+                });
+                showToast('Promo code applied successfully!', 'success');
+            } else {
+                setCouponError('Invalid promo code');
+                setAppliedCoupon(null);
+                showToast('Invalid promo code', 'error');
+            }
+            setApplyingCoupon(false);
+        }, 500);
     };
 
     // Calculate totals matching backend formulas
@@ -135,6 +144,7 @@ export default function Checkout() {
             if (paymentMethod === 'COD') {
                 clearCart();
                 await refreshProfile(); // Refresh loyalty points
+                showToast('Order confirmed successfully!', 'success');
                 navigate(`/checkout-success?orderId=${orderData.id}&orderNumber=${orderData.orderNumber || orderData.id}&trackingNumber=${orderData.trackingNumber}`);
             } else {
                 // 2. Configure Razorpay payment options
@@ -168,7 +178,9 @@ export default function Checkout() {
                 rzp.open();
             }
         } catch (err) {
-            setCheckoutError(err.message || 'Server error during checkout initialization');
+            const errorMsg = err.response?.data?.message || err.message || 'Server error during checkout initialization';
+            setCheckoutError(errorMsg);
+            showToast(errorMsg, 'error');
             setPaymentProcessing(false);
         }
     };
@@ -311,36 +323,38 @@ export default function Checkout() {
                             {/* Payment Tabs */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                                 <div 
-                                    onClick={() => setPaymentMethod('RAZORPAY')}
+                                    onClick={() => !paymentProcessing && setPaymentMethod('RAZORPAY')}
                                     style={{ 
                                         padding: '16px', 
                                         borderRadius: '12px', 
                                         border: `2px solid ${paymentMethod === 'RAZORPAY' ? 'var(--accent)' : 'var(--border-color)'}`, 
                                         backgroundColor: paymentMethod === 'RAZORPAY' ? 'rgba(99, 102, 241, 0.05)' : 'var(--bg-tertiary)', 
-                                        cursor: 'pointer',
+                                        cursor: paymentProcessing ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         gap: '8px',
-                                        transition: 'all 0.2s ease'
+                                        transition: 'all 0.2s ease',
+                                        opacity: paymentProcessing ? 0.7 : 1
                                     }}
                                 >
                                     <CreditCard size={24} color={paymentMethod === 'RAZORPAY' ? 'var(--accent)' : 'var(--text-secondary)'} />
                                     <span style={{ fontSize: '14px', fontWeight: '600', color: paymentMethod === 'RAZORPAY' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>Pay Online</span>
                                 </div>
                                 <div 
-                                    onClick={() => setPaymentMethod('COD')}
+                                    onClick={() => !paymentProcessing && setPaymentMethod('COD')}
                                     style={{ 
                                         padding: '16px', 
                                         borderRadius: '12px', 
                                         border: `2px solid ${paymentMethod === 'COD' ? 'var(--accent)' : 'var(--border-color)'}`, 
                                         backgroundColor: paymentMethod === 'COD' ? 'rgba(99, 102, 241, 0.05)' : 'var(--bg-tertiary)', 
-                                        cursor: 'pointer',
+                                        cursor: paymentProcessing ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         gap: '8px',
-                                        transition: 'all 0.2s ease'
+                                        transition: 'all 0.2s ease',
+                                        opacity: paymentProcessing ? 0.7 : 1
                                     }}
                                 >
                                     <Package size={24} color={paymentMethod === 'COD' ? 'var(--accent)' : 'var(--text-secondary)'} />
@@ -428,11 +442,12 @@ export default function Checkout() {
                                     type="text" 
                                     placeholder="SALETIME10" 
                                     value={couponCode} 
+                                    disabled={applyingCoupon || paymentProcessing}
                                     onChange={(e) => setCouponCode(e.target.value)}
                                     style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
                                 />
-                                <button type="button" onClick={handleApplyCoupon} className="btn btn-secondary btn-sm">
-                                    Apply
+                                <button type="button" onClick={handleApplyCoupon} className="btn btn-secondary btn-sm" disabled={applyingCoupon || paymentProcessing}>
+                                    {applyingCoupon ? 'Checking...' : 'Apply'}
                                 </button>
                             </div>
                             {couponError && <span style={{ color: 'var(--error)', fontSize: '11px', fontWeight: 'bold', display: 'block', marginTop: '4px' }}>{couponError}</span>}
@@ -450,6 +465,7 @@ export default function Checkout() {
                                     <input 
                                         type="checkbox" 
                                         checked={usePoints} 
+                                        disabled={paymentProcessing}
                                         onChange={(e) => setUsePoints(e.target.checked)}
                                         style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                                     />

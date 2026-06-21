@@ -2,8 +2,10 @@ package com.ecommerce.lite.service;
 
 import com.ecommerce.lite.model.Category;
 import com.ecommerce.lite.model.Product;
+import com.ecommerce.lite.model.Synonym;
 import com.ecommerce.lite.repository.CategoryRepository;
 import com.ecommerce.lite.repository.ProductRepository;
+import com.ecommerce.lite.repository.SynonymRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -19,19 +21,33 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final SynonymRepository synonymRepository;
 
     @Transactional(readOnly = true)
     public Page<Product> searchProducts(Long categoryId, String search, Pageable pageable) {
-        String searchPattern = (search == null || search.trim().isEmpty()) ? null : "%" + search.trim().toLowerCase() + "%";
-        
-        if (categoryId != null && searchPattern != null) {
-            return productRepository.searchByCategoryAndSearch(categoryId, searchPattern, pageable);
-        } else if (categoryId != null) {
-            return productRepository.searchByCategory(categoryId, pageable);
-        } else if (searchPattern != null) {
-            return productRepository.searchByText(searchPattern, pageable);
+        if (search == null || search.trim().isEmpty()) {
+            if (categoryId != null) {
+                return productRepository.searchByCategory(categoryId, pageable);
+            } else {
+                return productRepository.findAll(pageable);
+            }
+        }
+
+        String cleanSearch = search.trim().toLowerCase().replace("-", "").replace(" ", "");
+        String searchPattern = "%" + cleanSearch + "%";
+        String searchAltPattern = searchPattern;
+
+        List<Synonym> synonyms = synonymRepository.findByTermOrSynonymIgnoreCase(cleanSearch);
+        if (!synonyms.isEmpty()) {
+            Synonym s = synonyms.get(0);
+            String altWord = s.getTerm().equalsIgnoreCase(cleanSearch) ? s.getSynonym() : s.getTerm();
+            searchAltPattern = "%" + altWord.trim().toLowerCase().replace("-", "").replace(" ", "") + "%";
+        }
+
+        if (categoryId != null) {
+            return productRepository.searchByCategoryAndSearch(categoryId, searchPattern, searchAltPattern, pageable);
         } else {
-            return productRepository.findAll(pageable);
+            return productRepository.searchByText(searchPattern, searchAltPattern, pageable);
         }
     }
 
@@ -73,6 +89,26 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<Category> getAllCategories() {
         return categoryRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Category> getCategoriesBySearch(String search) {
+        if (search == null || search.trim().isEmpty()) {
+            return categoryRepository.findAll();
+        }
+
+        String cleanSearch = search.trim().toLowerCase().replace("-", "").replace(" ", "");
+        String searchPattern = "%" + cleanSearch + "%";
+        String searchAltPattern = searchPattern;
+
+        List<Synonym> synonyms = synonymRepository.findByTermOrSynonymIgnoreCase(cleanSearch);
+        if (!synonyms.isEmpty()) {
+            Synonym s = synonyms.get(0);
+            String altWord = s.getTerm().equalsIgnoreCase(cleanSearch) ? s.getSynonym() : s.getTerm();
+            searchAltPattern = "%" + altWord.trim().toLowerCase().replace("-", "").replace(" ", "") + "%";
+        }
+
+        return productRepository.findCategoriesBySearchText(searchPattern, searchAltPattern);
     }
 
     @CacheEvict(value = "categories", allEntries = true)

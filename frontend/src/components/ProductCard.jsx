@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext';
 export default function ProductCard({ product }) {
     const { addToCart, cartItems } = useCart();
     const [added, setAdded] = useState(false);
+    const [adding, setAdding] = useState(false);
 
     const cartItem = cartItems?.find(item => item.product.id === product.id);
     const quantityInCart = cartItem ? cartItem.quantity : 0;
@@ -26,10 +27,12 @@ export default function ProductCard({ product }) {
         return stars;
     };
 
-    const handleQuickAdd = (e) => {
+    const handleQuickAdd = async (e) => {
         e.preventDefault(); // prevent navigation to detail page
-        addToCart(product, 1);
+        setAdding(true);
+        await addToCart(product, 1);
         setAdded(true);
+        setAdding(false);
         setTimeout(() => setAdded(false), 2000);
     };
 
@@ -63,12 +66,20 @@ export default function ProductCard({ product }) {
                             style={{ 
                                 transition: 'var(--transition)',
                                 backgroundColor: added ? 'var(--success)' : undefined, 
-                                borderColor: added ? 'var(--success)' : undefined
+                                borderColor: added ? 'var(--success)' : undefined,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
                             }}
                             aria-label={added ? "Added to cart" : "Add to cart"}
-                            disabled={added}
+                            disabled={added || adding}
                         >
-                            {added ? (
+                            {adding ? (
+                                <>
+                                    <div className="spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px', borderTopColor: '#fff', animationDuration: '0.6s' }}></div>
+                                    <span>Add</span>
+                                </>
+                            ) : added ? (
                                 <>
                                     <Check size={15} />
                                     <span>Added</span>

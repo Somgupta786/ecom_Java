@@ -53,7 +53,10 @@ public class ProductController {
     }
 
     @GetMapping("/categories")
-    public ResponseEntity<List<Category>> getCategories() {
+    public ResponseEntity<List<Category>> getCategories(@RequestParam(required = false) String search) {
+        if (search != null && !search.trim().isEmpty()) {
+            return ResponseEntity.ok(productService.getCategoriesBySearch(search));
+        }
         return ResponseEntity.ok(productService.getAllCategories());
     }
 }

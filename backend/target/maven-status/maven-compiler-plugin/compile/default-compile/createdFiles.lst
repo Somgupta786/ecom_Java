@@ -6,6 +6,7 @@ com\ecommerce\lite\repository\OrderRepository.class
 com\ecommerce\lite\model\Address.class
 com\ecommerce\lite\repository\ProductRepository.class
 com\ecommerce\lite\model\OrderItem$OrderItemBuilder.class
+com\ecommerce\lite\model\Synonym$SynonymBuilder.class
 com\ecommerce\lite\dto\DashboardStats.class
 com\ecommerce\lite\dto\ReviewRequest.class
 com\ecommerce\lite\config\SecurityConfig.class
@@ -36,6 +37,7 @@ com\ecommerce\lite\controller\AdminController.class
 com\ecommerce\lite\model\User$UserBuilder.class
 com\ecommerce\lite\repository\UserRepository.class
 com\ecommerce\lite\model\Product$ProductBuilder.class
+com\ecommerce\lite\repository\SynonymRepository.class
 com\ecommerce\lite\dto\RegisterRequest.class
 com\ecommerce\lite\dto\DashboardStats$DashboardStatsBuilder.class
 com\ecommerce\lite\model\OrderStatus.class
@@ -44,6 +46,7 @@ com\ecommerce\lite\service\OrderService.class
 com\ecommerce\lite\dto\AuthResponse.class
 com\ecommerce\lite\service\ProductService.class
 com\ecommerce\lite\model\OrderItem.class
+com\ecommerce\lite\model\Synonym.class
 com\ecommerce\lite\repository\CouponRepository.class
 com\ecommerce\lite\config\DataInitializer.class
 com\ecommerce\lite\model\Category$CategoryBuilder.class
@@ -54,3 +57,4 @@ com\ecommerce\lite\dto\CheckoutRequest.class
 com\ecommerce\lite\repository\CartItemRepository.class
 com\ecommerce\lite\dto\TokenRefreshRequest.class
 com\ecommerce\lite\service\CartService.class
+com\ecommerce\lite\controller\AuthController.class

@@ -21,6 +21,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final CouponRepository couponRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SynonymRepository synonymRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -463,6 +464,81 @@ public class DataInitializer implements CommandLineRunner {
                     .expiryDate(LocalDateTime.now().plusMonths(3))
                     .build();
             couponRepository.save(welcomeCoupon);
+        }
+
+        // 4. Seed Dummy T-Shirt and Tee products for strict synonym search testing
+        if (productRepository.count() > 0) {
+            Category clothing = categoryRepository.findByName("Clothing").orElseGet(() -> categoryRepository.save(Category.builder().name("Clothing").build()));
+            List<Product> testProducts = new ArrayList<>();
+            
+            if (productRepository.findAll().stream().noneMatch(p -> p.getSku().equals("CLOT-TEE-050"))) {
+                testProducts.add(Product.builder()
+                        .name("Organic Cotton Slub Tee")
+                        .description("A lightweight organic cotton tee with a textured slub finish. Essential casual summer top.")
+                        .price(new BigDecimal("28.00"))
+                        .sku("CLOT-TEE-050")
+                        .stock(30)
+                        .imageUrl("https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500")
+                        .category(clothing)
+                        .rating(4.5)
+                        .reviewCount(0)
+                        .build());
+            }
+
+            if (productRepository.findAll().stream().noneMatch(p -> p.getSku().equals("CLOT-TSH-051"))) {
+                testProducts.add(Product.builder()
+                        .name("Vintage Graphic T-Shirt")
+                        .description("Soft vintage washed graphic t-shirt featuring retro prints. Ribbed neck band and loose fit.")
+                        .price(new BigDecimal("35.00"))
+                        .sku("CLOT-TSH-051")
+                        .stock(25)
+                        .imageUrl("https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500")
+                        .category(clothing)
+                        .rating(4.3)
+                        .reviewCount(0)
+                        .build());
+            }
+            
+            if (productRepository.findAll().stream().noneMatch(p -> p.getSku().equals("CLOT-TEE-052"))) {
+                testProducts.add(Product.builder()
+                        .name("Pima Cotton Crewneck Tee")
+                        .description("Premium extra-long staple Pima cotton tee. Exceptionally smooth, durable, and breathable.")
+                        .price(new BigDecimal("38.00"))
+                        .sku("CLOT-TEE-052")
+                        .stock(40)
+                        .imageUrl("https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=500")
+                        .category(clothing)
+                        .rating(4.7)
+                        .reviewCount(0)
+                        .build());
+            }
+
+            if (productRepository.findAll().stream().noneMatch(p -> p.getSku().equals("CLOT-TSH-053"))) {
+                testProducts.add(Product.builder()
+                        .name("Athletic Moisture-Wicking T-Shirt")
+                        .description("High performance athletic training shirt. Quick-dry lightweight polyester knit fabric.")
+                        .price(new BigDecimal("42.00"))
+                        .sku("CLOT-TSH-053")
+                        .stock(35)
+                        .imageUrl("https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=500")
+                        .category(clothing)
+                        .rating(4.6)
+                        .reviewCount(0)
+                        .build());
+            }
+
+            if (!testProducts.isEmpty()) {
+                productRepository.saveAll(testProducts);
+            }
+        }
+
+        // 5. Seed Default Synonym mapping (tshirt <-> tee)
+        if (synonymRepository.count() == 0) {
+            Synonym defaultSynonym = Synonym.builder()
+                    .term("tshirt")
+                    .synonym("tee")
+                    .build();
+            synonymRepository.save(defaultSynonym);
         }
     }
 }

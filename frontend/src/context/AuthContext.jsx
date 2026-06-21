@@ -1,9 +1,11 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import api from '../services/api';
+import { useToast } from './ToastContext';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+    const { showToast } = useToast();
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token') || null);
     const [loading, setLoading] = useState(true);
@@ -53,9 +55,11 @@ export const AuthProvider = ({ children }) => {
                 addresses: []
             });
             await fetchProfile(data.accessToken);
+            showToast('Welcome back!', 'success');
             return { success: true };
         } catch (err) {
             const message = err.response?.data?.message || 'Login failed';
+            showToast(message, 'error');
             return { success: false, message };
         } finally {
             setLoading(false);
@@ -84,9 +88,11 @@ export const AuthProvider = ({ children }) => {
                 addresses: []
             });
             await fetchProfile(data.accessToken);
+            showToast('Account created successfully!', 'success');
             return { success: true };
         } catch (err) {
             const message = err.response?.data?.message || 'Registration failed';
+            showToast(message, 'error');
             return { success: false, message };
         } finally {
             setLoading(false);
@@ -98,6 +104,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('refreshToken');
         setToken(null);
         setUser(null);
+        showToast('Logged out successfully.', 'info');
     };
 
     const refreshProfile = async () => {

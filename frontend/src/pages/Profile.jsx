@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { MapPin, Award, Share2, Clipboard, Printer, Package, XCircle } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 const API_BASE = 'http://localhost:8080/api';
 
 export default function Profile() {
     const { token, user, refreshProfile } = useAuth();
+    const { showToast } = useToast();
     const [orders, setOrders] = useState([]);
     const [ordersLoading, setOrdersLoading] = useState(true);
     
@@ -19,6 +21,8 @@ export default function Profile() {
     const [phone, setPhone] = useState('');
     const [addressMsg, setAddressMsg] = useState('');
     const [showAddressForm, setShowAddressForm] = useState(false);
+    const [submittingAddress, setSubmittingAddress] = useState(false);
+    const [cancellingId, setCancellingId] = useState(null);
 
     // Referral state
     const [copied, setCopied] = useState(false);
@@ -45,17 +49,19 @@ export default function Profile() {
         const refUrl = `${window.location.origin}/register?ref=${user?.referralCode}`;
         navigator.clipboard.writeText(refUrl);
         setCopied(true);
+        showToast('Referral link copied to clipboard!', 'success');
         setTimeout(() => setCopied(false), 2000);
     };
 
     const handleAddAddress = async (e) => {
         e.preventDefault();
         setAddressMsg('');
+        setSubmittingAddress(true);
 
         try {
             const newAddress = { street, city, state, zipCode, country, phone };
             await api.post('/auth/addresses', newAddress);
-            setAddressMsg('Address added successfully!');
+            showToast('Address added successfully!', 'success');
             setShowAddressForm(false);
             setStreet('');
             setCity('');
@@ -64,7 +70,9 @@ export default function Profile() {
             setPhone('');
             await refreshProfile();
         } catch (err) {
-            setAddressMsg('Failed to update address book');
+            showToast('Failed to update address book', 'error');
+        } finally {
+            setSubmittingAddress(false);
         }
     };
 
@@ -77,14 +85,18 @@ export default function Profile() {
             order.id === orderId ? { ...order, status: 'CANCELLED' } : order
         ));
 
+        setCancellingId(orderId);
         try {
             await api.post(`/orders/${orderId}/cancel`);
+            showToast('Order cancelled successfully.', 'info');
             fetchOrders(); // Sync in background
             refreshProfile();
         } catch (err) {
             setOrders(originalOrders); // Revert on error
             const msg = err.response?.data?.message || 'Failed to cancel order';
-            alert(msg);
+            showToast(msg, 'error');
+        } finally {
+            setCancellingId(null);
         }
     };
 
@@ -172,6 +184,7 @@ export default function Profile() {
                                 <input 
                                     type="text" 
                                     required 
+                                    disabled={submittingAddress}
                                     placeholder="Street Address" 
                                     value={street}
                                     onChange={(e) => setStreet(e.target.value)}
@@ -181,6 +194,7 @@ export default function Profile() {
                                 <input 
                                     type="text" 
                                     required 
+                                    disabled={submittingAddress}
                                     placeholder="City" 
                                     value={city}
                                     onChange={(e) => setCity(e.target.value)}
@@ -188,6 +202,7 @@ export default function Profile() {
                                 <input 
                                     type="text" 
                                     required 
+                                    disabled={submittingAddress}
                                     placeholder="State" 
                                     value={state}
                                     onChange={(e) => setState(e.target.value)}
@@ -197,6 +212,7 @@ export default function Profile() {
                                 <input 
                                     type="text" 
                                     required 
+                                    disabled={submittingAddress}
                                     placeholder="Zip Code" 
                                     value={zipCode}
                                     onChange={(e) => setZipCode(e.target.value)}
@@ -204,15 +220,21 @@ export default function Profile() {
                                 <input 
                                     type="text" 
                                     required 
+                                    disabled={submittingAddress}
                                     placeholder="Phone" 
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
                                 />
                             </div>
-                            <button type="submit" className="btn btn-primary btn-sm" style={{ width: '100%' }}>
-                                Save Address
+                            <button type="submit" className="btn btn-primary btn-sm" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }} disabled={submittingAddress}>
+                                {submittingAddress ? (
+                                    <>
+                                        <div className="spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px', borderTopColor: '#fff', animationDuration: '0.6s' }}></div>
+                                        <span>Saving Address...</span>
+                                    </>
+                                ) : 'Save Address'}
                             </button>
-                            <button type="button" onClick={() => setShowAddressForm(false)} className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: '8px' }}>
+                            <button type="button" onClick={() => setShowAddressForm(false)} className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: '8px' }} disabled={submittingAddress}>
                                 Cancel
                             </button>
                         </form>
@@ -283,9 +305,19 @@ export default function Profile() {
                                                 onClick={() => handleCancelOrder(order.id)}
                                                 className="btn btn-outline btn-sm"
                                                 style={{ color: 'var(--error)', borderColor: 'var(--error)', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                                disabled={cancellingId === order.id}
                                             >
-                                                <XCircle size={14} />
-                                                <span>Cancel</span>
+                                                {cancellingId === order.id ? (
+                                                    <>
+                                                        <div className="spinner" style={{ width: '12px', height: '12px', borderWidth: '1.5px', borderTopColor: 'var(--error)', animationDuration: '0.6s' }}></div>
+                                                        <span>Cancelling...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <XCircle size={14} />
+                                                        <span>Cancel</span>
+                                                    </>
+                                                )}
                                             </button>
                                         )}
                                     </div>

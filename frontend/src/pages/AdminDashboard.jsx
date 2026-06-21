@@ -6,10 +6,12 @@ import {
     PlusCircle, Trash2, Edit, Save, PowerOff, Sun, Moon, Upload 
 } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 export default function AdminDashboard() {
     const { token, logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
+    const { showToast } = useToast();
     
     // Sidebar view
     const [view, setView] = useState('analytics'); // analytics, products, orders, coupons
@@ -27,8 +29,17 @@ export default function AdminDashboard() {
     const [newCoupon, setNewCoupon] = useState({ code: '', discountPercent: '', expiryDate: '' });
     const [uploading, setUploading] = useState(false);
 
-    // Messages
-    const [msg, setMsg] = useState('');
+    // Loading states
+    const [submittingProduct, setSubmittingProduct] = useState(false);
+    const [deletingProductId, setDeletingProductId] = useState(null);
+    const [submittingCategory, setSubmittingCategory] = useState(false);
+    const [updatingOrderId, setUpdatingOrderId] = useState(null);
+
+    // Synonym states
+    const [synonyms, setSynonyms] = useState([]);
+    const [newSynonym, setNewSynonym] = useState({ term: '', synonym: '' });
+    const [submittingSynonym, setSubmittingSynonym] = useState(false);
+    const [deletingSynonymId, setDeletingSynonymId] = useState(null);
 
     const fetchData = async () => {
         try {
@@ -47,6 +58,10 @@ export default function AdminDashboard() {
             // Orders
             const orderRes = await api.get('/admin/orders');
             setOrders(orderRes.data);
+
+            // Synonyms
+            const synRes = await api.get('/admin/synonyms');
+            setSynonyms(synRes.data || []);
         } catch (err) {
             console.error('Error fetching admin data', err);
         }
@@ -60,7 +75,7 @@ export default function AdminDashboard() {
 
     const handleCreateProduct = async (e) => {
         e.preventDefault();
-        setMsg('');
+        setSubmittingProduct(true);
 
         const selectedCat = categories.find(c => c.id === Number(newProduct.categoryId));
         const payload = {
@@ -75,17 +90,19 @@ export default function AdminDashboard() {
 
         try {
             await api.post('/admin/products', payload);
-            setMsg('Product created successfully!');
+            showToast('Product created successfully!', 'success');
             setNewProduct({ name: '', description: '', price: '', sku: '', stock: '', imageUrl: '', categoryId: '' });
             await fetchData();
         } catch (err) {
-            setMsg('Error creating product.');
+            showToast('Error creating product.', 'error');
+        } finally {
+            setSubmittingProduct(false);
         }
     };
 
     const handleUpdateProduct = async (e) => {
         e.preventDefault();
-        setMsg('');
+        setSubmittingProduct(true);
 
         const selectedCat = categories.find(c => c.id === Number(editingProduct.categoryId));
         const payload = {
@@ -100,24 +117,28 @@ export default function AdminDashboard() {
 
         try {
             await api.put(`/admin/products/${editingProduct.id}`, payload);
-            setMsg('Product updated successfully!');
+            showToast('Product updated successfully!', 'success');
             setEditingProduct(null);
             await fetchData();
         } catch (err) {
-            setMsg('Error updating product.');
+            showToast('Error updating product.', 'error');
+        } finally {
+            setSubmittingProduct(false);
         }
     };
 
     const handleDeleteProduct = async (prodId) => {
         if (!window.confirm('Are you sure you want to delete this product?')) return;
-        setMsg('');
+        setDeletingProductId(prodId);
 
         try {
             await api.delete(`/admin/products/${prodId}`);
-            setMsg('Product deleted.');
+            showToast('Product deleted.', 'success');
             await fetchData();
         } catch (err) {
-            setMsg('Error deleting product.');
+            showToast('Error deleting product.', 'error');
+        } finally {
+            setDeletingProductId(null);
         }
     };
 
@@ -129,7 +150,6 @@ export default function AdminDashboard() {
         formData.append('file', file);
 
         setUploading(true);
-        setMsg('');
 
         try {
             const res = await api.post('/admin/products/upload', formData, {
@@ -152,13 +172,13 @@ export default function AdminDashboard() {
                 } else if (type === 'edit') {
                     setEditingProduct(prev => ({ ...prev, imageUrl: url }));
                 }
-                setMsg('Image uploaded successfully to Cloudinary!');
+                showToast('Image uploaded successfully to Cloudinary!', 'success');
             } else {
-                setMsg('Failed to extract image URL from upload response.');
+                showToast('Failed to extract image URL from upload response.', 'error');
             }
         } catch (err) {
             console.error('Upload error', err);
-            setMsg('Failed to upload image to Cloudinary.');
+            showToast('Failed to upload image to Cloudinary.', 'error');
         } finally {
             setUploading(false);
         }
@@ -166,25 +186,65 @@ export default function AdminDashboard() {
 
     const handleCreateCategory = async (e) => {
         e.preventDefault();
-        setMsg('');
         if (!newCategoryName.trim()) return;
+        setSubmittingCategory(true);
 
         try {
             await api.post('/admin/categories', { name: newCategoryName });
-            setMsg('Category added!');
+            showToast('Category added!', 'success');
             setNewCategoryName('');
             await fetchData();
         } catch (err) {
-            setMsg('Error adding category.');
+            showToast('Error adding category.', 'error');
+        } finally {
+            setSubmittingCategory(false);
         }
     };
 
     const handleUpdateOrderStatus = async (orderId, newStatus) => {
+        setUpdatingOrderId(orderId);
         try {
             await api.put(`/admin/orders/${orderId}/status?status=${newStatus}`);
+            showToast('Order status updated successfully.', 'success');
             await fetchData();
         } catch (err) {
             console.error('Error updating status', err);
+            showToast('Error updating status.', 'error');
+        } finally {
+            setUpdatingOrderId(null);
+        }
+    };
+
+    const handleCreateSynonym = async (e) => {
+        e.preventDefault();
+        if (!newSynonym.term.trim() || !newSynonym.synonym.trim()) return;
+        setSubmittingSynonym(true);
+        try {
+            await api.post('/admin/synonyms', {
+                term: newSynonym.term.trim().toLowerCase(),
+                synonym: newSynonym.synonym.trim().toLowerCase()
+            });
+            showToast('Synonym mapped successfully!', 'success');
+            setNewSynonym({ term: '', synonym: '' });
+            await fetchData();
+        } catch (err) {
+            showToast('Error mapping synonym.', 'error');
+        } finally {
+            setSubmittingSynonym(false);
+        }
+    };
+
+    const handleDeleteSynonym = async (synId) => {
+        if (!window.confirm('Are you sure you want to delete this synonym mapping?')) return;
+        setDeletingSynonymId(synId);
+        try {
+            await api.delete(`/admin/synonyms/${synId}`);
+            showToast('Synonym mapping deleted.', 'success');
+            await fetchData();
+        } catch (err) {
+            showToast('Error deleting synonym.', 'error');
+        } finally {
+            setDeletingSynonymId(null);
         }
     };
 
@@ -262,6 +322,10 @@ export default function AdminDashboard() {
                         <AlertCircle size={16} />
                         <span>Categories</span>
                     </li>
+                    <li onClick={() => setView('synonyms')} className={`admin-sidebar-item ${view === 'synonyms' ? 'active' : ''}`}>
+                        <Save size={16} />
+                        <span>Synonyms</span>
+                    </li>
                     
                     {/* Theme Toggle in Admin View */}
                     <li onClick={toggleTheme} className="admin-sidebar-item" style={{ marginTop: 'auto' }}>
@@ -279,12 +343,6 @@ export default function AdminDashboard() {
             {/* Dashboard Content */}
             <div className="admin-content">
                 
-                {msg && (
-                    <div style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent)', padding: '10px 14px', borderRadius: '8px', marginBottom: '18px', fontSize: '14px', border: '1px solid var(--accent)' }}>
-                        {msg}
-                    </div>
-                )}
-
                 {/* VIEW 1: Analytics */}
                 {view === 'analytics' && (() => {
                     const revenueData = getRevenueChartData();
@@ -517,24 +575,24 @@ export default function AdminDashboard() {
                                 <form onSubmit={handleUpdateProduct} style={{ marginTop: '16px' }}>
                                     <div className="form-group">
                                         <label>Product Name</label>
-                                        <input type="text" required value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} />
+                                        <input type="text" required disabled={submittingProduct || uploading} value={editingProduct.name} onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} />
                                     </div>
                                     <div className="form-group">
                                         <label>Description</label>
-                                        <textarea required value={editingProduct.description} onChange={(e) => setEditingProduct({...editingProduct, description: e.target.value})} />
+                                        <textarea required disabled={submittingProduct || uploading} value={editingProduct.description} onChange={(e) => setEditingProduct({...editingProduct, description: e.target.value})} />
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                                         <div className="form-group">
                                             <label>Price ($)</label>
-                                            <input type="number" step="0.01" required value={editingProduct.price} onChange={(e) => setEditingProduct({...editingProduct, price: e.target.value})} />
+                                            <input type="number" step="0.01" required disabled={submittingProduct || uploading} value={editingProduct.price} onChange={(e) => setEditingProduct({...editingProduct, price: e.target.value})} />
                                         </div>
                                         <div className="form-group">
                                             <label>Stock Count</label>
-                                            <input type="number" required value={editingProduct.stock} onChange={(e) => setEditingProduct({...editingProduct, stock: e.target.value})} />
+                                            <input type="number" required disabled={submittingProduct || uploading} value={editingProduct.stock} onChange={(e) => setEditingProduct({...editingProduct, stock: e.target.value})} />
                                         </div>
                                         <div className="form-group">
                                             <label>Category</label>
-                                            <select value={editingProduct.categoryId} onChange={(e) => setEditingProduct({...editingProduct, categoryId: e.target.value})}>
+                                            <select disabled={submittingProduct || uploading} value={editingProduct.categoryId} onChange={(e) => setEditingProduct({...editingProduct, categoryId: e.target.value})}>
                                                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                             </select>
                                         </div>
@@ -544,11 +602,12 @@ export default function AdminDashboard() {
                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                             <input 
                                                 type="text" 
+                                                disabled={submittingProduct || uploading}
                                                 value={editingProduct.imageUrl} 
                                                 onChange={(e) => setEditingProduct({...editingProduct, imageUrl: e.target.value})} 
                                                 style={{ flex: 1 }}
                                             />
-                                            <label className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, padding: '10px 16px', height: '42px', whiteSpace: 'nowrap' }}>
+                                            <label className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: submittingProduct || uploading ? 'not-allowed' : 'pointer', margin: 0, padding: '10px 16px', height: '42px', whiteSpace: 'nowrap', opacity: submittingProduct || uploading ? 0.7 : 1 }}>
                                                 {uploading ? (
                                                     <>
                                                         <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
@@ -565,14 +624,21 @@ export default function AdminDashboard() {
                                                     accept="image/*" 
                                                     onChange={(e) => handleFileUpload(e, 'edit')} 
                                                     style={{ display: 'none' }}
-                                                    disabled={uploading}
+                                                    disabled={submittingProduct || uploading}
                                                 />
                                             </label>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button type="submit" className="btn btn-primary">Save Changes</button>
-                                        <button type="button" onClick={() => setEditingProduct(null)} className="btn btn-secondary">Cancel</button>
+                                        <button type="submit" className="btn btn-primary" disabled={submittingProduct || uploading}>
+                                            {submittingProduct ? (
+                                                <>
+                                                    <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', marginRight: '6px' }} />
+                                                    <span>Saving...</span>
+                                                </>
+                                            ) : 'Save Changes'}
+                                        </button>
+                                        <button type="button" onClick={() => setEditingProduct(null)} className="btn btn-secondary" disabled={submittingProduct || uploading}>Cancel</button>
                                     </div>
                                 </form>
                             </div>
@@ -584,29 +650,29 @@ export default function AdminDashboard() {
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                         <div className="form-group">
                                             <label>Product Name</label>
-                                            <input type="text" required placeholder="Smart Watch" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} />
+                                            <input type="text" required disabled={submittingProduct || uploading} placeholder="Smart Watch" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} />
                                         </div>
                                         <div className="form-group">
                                             <label>SKU Code</label>
-                                            <input type="text" required placeholder="ELEC-SMART-099" value={newProduct.sku} onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})} />
+                                            <input type="text" required disabled={submittingProduct || uploading} placeholder="ELEC-SMART-099" value={newProduct.sku} onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})} />
                                         </div>
                                     </div>
                                     <div className="form-group">
                                         <label>Description</label>
-                                        <textarea required placeholder="Write a description..." value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} />
+                                        <textarea required disabled={submittingProduct || uploading} placeholder="Write a description..." value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} />
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                                         <div className="form-group">
                                             <label>Price ($)</label>
-                                            <input type="number" step="0.01" required placeholder="99.99" value={newProduct.price} onChange={(e) => setNewProduct({...newProduct, price: e.target.value})} />
+                                            <input type="number" step="0.01" required disabled={submittingProduct || uploading} placeholder="99.99" value={newProduct.price} onChange={(e) => setNewProduct({...newProduct, price: e.target.value})} />
                                         </div>
                                         <div className="form-group">
                                             <label>Stock Count</label>
-                                            <input type="number" required placeholder="50" value={newProduct.stock} onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})} />
+                                            <input type="number" required disabled={submittingProduct || uploading} placeholder="50" value={newProduct.stock} onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})} />
                                         </div>
                                         <div className="form-group">
                                             <label>Category</label>
-                                            <select value={newProduct.categoryId} required onChange={(e) => setNewProduct({...newProduct, categoryId: e.target.value})}>
+                                            <select disabled={submittingProduct || uploading} value={newProduct.categoryId} required onChange={(e) => setNewProduct({...newProduct, categoryId: e.target.value})}>
                                                 <option value="">Select Category</option>
                                                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                             </select>
@@ -617,12 +683,13 @@ export default function AdminDashboard() {
                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                             <input 
                                                 type="text" 
+                                                disabled={submittingProduct || uploading}
                                                 placeholder="https://example.com/watch.jpg" 
                                                 value={newProduct.imageUrl} 
                                                 onChange={(e) => setNewProduct({...newProduct, imageUrl: e.target.value})}
                                                 style={{ flex: 1 }}
                                             />
-                                            <label className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, padding: '10px 16px', height: '42px', whiteSpace: 'nowrap' }}>
+                                            <label className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: submittingProduct || uploading ? 'not-allowed' : 'pointer', margin: 0, padding: '10px 16px', height: '42px', whiteSpace: 'nowrap', opacity: submittingProduct || uploading ? 0.7 : 1 }}>
                                                 {uploading ? (
                                                     <>
                                                         <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
@@ -639,12 +706,19 @@ export default function AdminDashboard() {
                                                     accept="image/*" 
                                                     onChange={(e) => handleFileUpload(e, 'new')} 
                                                     style={{ display: 'none' }}
-                                                    disabled={uploading}
+                                                    disabled={submittingProduct || uploading}
                                                 />
                                             </label>
                                         </div>
                                     </div>
-                                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Product</button>
+                                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submittingProduct || uploading}>
+                                        {submittingProduct ? (
+                                            <>
+                                                <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', marginRight: '6px' }} />
+                                                <span>Adding Product...</span>
+                                            </>
+                                        ) : 'Add Product'}
+                                    </button>
                                 </form>
                             </div>
                         )}
@@ -667,6 +741,7 @@ export default function AdminDashboard() {
                                                 onClick={() => setEditingProduct({ ...prod, categoryId: prod.category?.id })} 
                                                 className="btn btn-secondary btn-sm"
                                                 style={{ padding: '6px' }}
+                                                disabled={deletingProductId !== null || submittingProduct}
                                             >
                                                 <Edit size={14} />
                                             </button>
@@ -674,12 +749,17 @@ export default function AdminDashboard() {
                                                 onClick={() => handleDeleteProduct(prod.id)} 
                                                 className="btn btn-outline btn-sm"
                                                 style={{ padding: '6px', color: 'var(--error)', borderColor: 'var(--error)' }}
+                                                disabled={deletingProductId !== null || submittingProduct}
                                             >
-                                                <Trash2 size={14} />
+                                                {deletingProductId === prod.id ? (
+                                                    <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid var(--error)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
+                                                ) : (
+                                                    <Trash2 size={14} />
+                                                )}
                                             </button>
                                         </div>
                                     </div>
-                                ))}
+                                    ))}
                             </div>
                         </div>
                     </div>
@@ -711,10 +791,14 @@ export default function AdminDashboard() {
                                             </div>
                                             
                                             {/* Status Transition selection */}
-                                            <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {updatingOrderId === ord.id && (
+                                                    <span className="spinner animate-spin" style={{ width: '16px', height: '16px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
+                                                )}
                                                 <select 
                                                     value={ord.status} 
                                                     onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value)}
+                                                    disabled={updatingOrderId !== null}
                                                     style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                                 >
                                                     <option value="PENDING">PENDING</option>
@@ -741,11 +825,19 @@ export default function AdminDashboard() {
                                 type="text" 
                                 placeholder="New category name (e.g. Footwear)" 
                                 required
+                                disabled={submittingCategory}
                                 value={newCategoryName}
                                 onChange={(e) => setNewCategoryName(e.target.value)}
                                 style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                             />
-                            <button type="submit" className="btn btn-primary">Add Category</button>
+                            <button type="submit" className="btn btn-primary" disabled={submittingCategory} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {submittingCategory ? (
+                                    <>
+                                        <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
+                                        <span>Adding...</span>
+                                    </>
+                                ) : 'Add Category'}
+                            </button>
                         </form>
                         
                         <h3>Existing Categories</h3>
@@ -755,6 +847,74 @@ export default function AdminDashboard() {
                                     {c.name}
                                 </span>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* VIEW 5: Synonyms Management */}
+                {view === 'synonyms' && (
+                    <div className="checkout-card" style={{ margin: 0, padding: '24px' }}>
+                        <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>Manage Synonym Dictionary</h2>
+                        <form onSubmit={handleCreateSynonym} style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                            <div className="form-group" style={{ flex: '1 0 200px', margin: 0 }}>
+                                <input 
+                                    type="text" 
+                                    placeholder="Word 1 (e.g. tshirt)" 
+                                    required
+                                    disabled={submittingSynonym}
+                                    value={newSynonym.term}
+                                    onChange={(e) => setNewSynonym({ ...newSynonym, term: e.target.value })}
+                                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                />
+                            </div>
+                            <div className="form-group" style={{ flex: '1 0 200px', margin: 0 }}>
+                                <input 
+                                    type="text" 
+                                    placeholder="Word 2 (e.g. tee)" 
+                                    required
+                                    disabled={submittingSynonym}
+                                    value={newSynonym.synonym}
+                                    onChange={(e) => setNewSynonym({ ...newSynonym, synonym: e.target.value })}
+                                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                />
+                            </div>
+                            <button type="submit" className="btn btn-primary" disabled={submittingSynonym} style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '42px' }}>
+                                {submittingSynonym ? (
+                                    <>
+                                        <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
+                                        <span>Mapping...</span>
+                                    </>
+                                ) : 'Map Synonym'}
+                            </button>
+                        </form>
+                        
+                        <h3>Active Mappings</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+                            {synonyms.length === 0 ? (
+                                <p style={{ color: 'var(--text-muted)' }}>No synonyms mapped in the system.</p>
+                            ) : (
+                                synonyms.map(syn => (
+                                    <div key={syn.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                            <span style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' }}>{syn.term}</span>
+                                            <span style={{ color: 'var(--text-muted)' }}>&harr;</span>
+                                            <span style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' }}>{syn.synonym}</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleDeleteSynonym(syn.id)} 
+                                            className="btn btn-outline btn-sm"
+                                            style={{ padding: '6px', color: 'var(--error)', borderColor: 'var(--error)' }}
+                                            disabled={deletingSynonymId !== null}
+                                        >
+                                            {deletingSynonymId === syn.id ? (
+                                                <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid var(--error)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block' }} />
+                                            ) : (
+                                                <Trash2 size={14} />
+                                            )}
+                                        </button>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 )}

@@ -18,6 +18,8 @@ export default function ProductDetail() {
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(true);
     const [added, setAdded] = useState(false);
+    const [adding, setAdding] = useState(false);
+    const [submittingReview, setSubmittingReview] = useState(false);
 
     const cartItem = cartItems?.find(item => item.product.id === product?.id);
     const quantityInCart = cartItem ? cartItem.quantity : 0;
@@ -56,8 +58,10 @@ export default function ProductDetail() {
 
     const handleAddToCart = async () => {
         if (!product) return;
+        setAdding(true);
         await addToCart(product, quantity);
         setAdded(true);
+        setAdding(false);
         setTimeout(() => setAdded(false), 2000);
     };
 
@@ -71,6 +75,7 @@ export default function ProductDetail() {
             return;
         }
 
+        setSubmittingReview(true);
         try {
             await api.post(`/products/${id}/reviews`, { rating, comment });
             setReviewSuccess(true);
@@ -84,6 +89,8 @@ export default function ProductDetail() {
         } catch (err) {
             const msg = err.response?.data?.message || 'Failed to submit review';
             setReviewError(msg);
+        } finally {
+            setSubmittingReview(false);
         }
     };
 
@@ -177,9 +184,14 @@ export default function ProductDetail() {
                                         alignItems: 'center',
                                         transition: 'var(--transition)'
                                     }}
-                                    disabled={added}
+                                    disabled={added || adding}
                                 >
-                                    {added ? (
+                                    {adding ? (
+                                        <>
+                                            <div className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px', borderTopColor: '#fff', animationDuration: '0.6s' }}></div>
+                                            <span>Adding...</span>
+                                        </>
+                                    ) : added ? (
                                         <>
                                             <CheckCircle2 size={16} />
                                             <span>Added</span>
@@ -286,6 +298,7 @@ export default function ProductDetail() {
                                     <label>Rating</label>
                                     <select 
                                         value={rating} 
+                                        disabled={submittingReview}
                                         onChange={(e) => setRating(Number(e.target.value))}
                                     >
                                         <option value="5">5 Stars (Excellent)</option>
@@ -300,13 +313,19 @@ export default function ProductDetail() {
                                     <textarea 
                                         rows="4" 
                                         required 
+                                        disabled={submittingReview}
                                         value={comment}
                                         onChange={(e) => setComment(e.target.value)}
                                         placeholder="What did you like or dislike about this product?"
                                     />
                                 </div>
-                                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                                    Submit Feedback
+                                <button type="submit" className="btn btn-primary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }} disabled={submittingReview}>
+                                    {submittingReview ? (
+                                        <>
+                                            <div className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px', borderTopColor: '#fff', animationDuration: '0.6s' }}></div>
+                                            <span>Submitting...</span>
+                                        </>
+                                    ) : 'Submit Feedback'}
                                 </button>
                             </form>
                         ) : (
