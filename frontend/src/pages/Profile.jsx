@@ -63,6 +63,33 @@ export default function Profile() {
             showToast('Phone number must contain at least 10 digits.', 'error');
             return;
         }
+
+        // Validate street address length
+        if (street.trim().length < 5) {
+            showToast('Street address must be at least 5 characters.', 'error');
+            return;
+        }
+
+        // Validate city format
+        const cityRegex = /^[a-zA-Z\s]{2,50}$/;
+        if (!cityRegex.test(city.trim())) {
+            showToast('Please enter a valid city name (letters and spaces only).', 'error');
+            return;
+        }
+
+        // Validate state format
+        const stateRegex = /^[a-zA-Z\s.]{2,50}$/;
+        if (!stateRegex.test(state.trim())) {
+            showToast('Please enter a valid state/province name.', 'error');
+            return;
+        }
+
+        // Validate zip code (at least 3 characters, alphanumeric)
+        const zipRegex = /^[a-zA-Z0-9\s-]{3,10}$/;
+        if (!zipRegex.test(zipCode.trim())) {
+            showToast('Please enter a valid postal/zip code.', 'error');
+            return;
+        }
         
         setSubmittingAddress(true);
 

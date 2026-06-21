@@ -1926,4 +1926,32 @@ input:disabled, select:disabled, textarea:disabled {
   animation: pulse 2s infinite ease-in-out;
 }
 
+/* Responsive Coupon Modal for Mobile */
+@media (max-width: 480px) {
+  .modal-container {
+    width: 95% !important;
+    max-height: 90vh !important;
+    border-radius: 12px !important;
+  }
+  .modal-header {
+    padding: 16px 20px !important;
+  }
+  .modal-body {
+    padding: 16px 20px !important;
+    gap: 12px !important;
+  }
+  .coupon-list-item {
+    padding: 12px !important;
+  }
+  .coupon-details {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .coupon-action-btn {
+    width: 100% !important;
+    text-align: center !important;
+  }
+}
+
 
