@@ -61,4 +61,57 @@ public class AuthServiceTest {
         assertEquals(10, referredAfter.getRewardPoints(), "Referred user should get 10 points");
         assertEquals(refCode, referredAfter.getReferredBy(), "Referred user's referredBy field should match referrer's code");
     }
+
+    @Test
+    public void testAddressEditAndDelete() {
+        // Create user
+        RegisterRequest req = new RegisterRequest();
+        req.setEmail("addressuser@example.com");
+        req.setPassword("password123");
+        req.setFirstName("Address");
+        req.setLastName("User");
+        authService.register(req);
+
+        User user = userRepository.findByEmail("addressuser@example.com").orElseThrow();
+        
+        // 1. Add Address
+        com.ecommerce.lite.model.Address address1 = com.ecommerce.lite.model.Address.builder()
+                .street("123 Main St")
+                .city("New York")
+                .state("NY")
+                .zipCode("10001")
+                .country("USA")
+                .phone("1234567890")
+                .build();
+        
+        user.getAddresses().add(address1);
+        userRepository.save(user);
+
+        User savedUser = userRepository.findByEmail("addressuser@example.com").orElseThrow();
+        assertEquals(1, savedUser.getAddresses().size());
+
+        // 2. Edit Address
+        com.ecommerce.lite.model.Address address2 = com.ecommerce.lite.model.Address.builder()
+                .street("456 Broad St")
+                .city("Boston")
+                .state("MA")
+                .zipCode("02108")
+                .country("USA")
+                .phone("0987654321")
+                .build();
+        
+        savedUser.getAddresses().set(0, address2);
+        userRepository.save(savedUser);
+
+        User editedUser = userRepository.findByEmail("addressuser@example.com").orElseThrow();
+        assertEquals(1, editedUser.getAddresses().size());
+        assertEquals("456 Broad St", editedUser.getAddresses().get(0).getStreet());
+
+        // 3. Delete Address
+        editedUser.getAddresses().remove(0);
+        userRepository.save(editedUser);
+
+        User deletedUser = userRepository.findByEmail("addressuser@example.com").orElseThrow();
+        assertEquals(0, deletedUser.getAddresses().size());
+    }
 }

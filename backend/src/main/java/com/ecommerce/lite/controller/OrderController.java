@@ -105,6 +105,7 @@ public class OrderController {
         Order order = orderService.getOrderByTrackingNumber(trackingNumber);
         Map<String, Object> response = new HashMap<>();
         response.put("id", order.getId());
+        response.put("orderNumber", order.getOrderNumber());
         response.put("status", order.getStatus());
         response.put("orderDate", order.getOrderDate());
         response.put("totalAmount", order.getTotalAmount());
