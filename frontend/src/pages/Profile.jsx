@@ -27,15 +27,15 @@ export default function Profile() {
     // Referral state
     const [copied, setCopied] = useState(false);
 
-    const fetchOrders = async () => {
-        setOrdersLoading(true);
+    const fetchOrders = async (showLoader = true) => {
+        if (showLoader) setOrdersLoading(true);
         try {
             const res = await api.get('/orders/history');
             setOrders(res.data);
         } catch (err) {
             console.error('Error fetching order history', err);
         } finally {
-            setOrdersLoading(false);
+            if (showLoader) setOrdersLoading(false);
         }
     };
 
@@ -87,9 +87,13 @@ export default function Profile() {
 
         setCancellingId(orderId);
         try {
-            await api.post(`/orders/${orderId}/cancel`);
+            const res = await api.post(`/orders/${orderId}/cancel`);
             showToast('Order cancelled successfully.', 'info');
-            fetchOrders(); // Sync in background
+            // Update state with actual response
+            setOrders(prev => prev.map(order => 
+                order.id === orderId ? res.data : order
+            ));
+            fetchOrders(false); // Silent sync in background
             refreshProfile();
         } catch (err) {
             setOrders(originalOrders); // Revert on error
@@ -251,7 +255,10 @@ export default function Profile() {
                 </h2>
 
                 {ordersLoading ? (
-                    <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 0' }}>Loading history...</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '40px 0', gap: '16px', color: 'var(--text-muted)' }}>
+                        <div className="spinner animate-spin" style={{ width: '32px', height: '32px', border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '15px', fontWeight: '500' }}>Loading history...</p>
+                    </div>
                 ) : orders.length === 0 ? (
                     <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px 0' }}>No orders placed yet.</div>
                 ) : (

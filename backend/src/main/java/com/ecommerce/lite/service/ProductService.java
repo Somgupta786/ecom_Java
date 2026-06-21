@@ -35,19 +35,19 @@ public class ProductService {
 
         String cleanSearch = search.trim().toLowerCase().replace("-", "").replace(" ", "");
         String searchPattern = "%" + cleanSearch + "%";
-        String searchAltPattern = searchPattern;
+        String searchAlt = cleanSearch;
 
         List<Synonym> synonyms = synonymRepository.findByTermOrSynonymIgnoreCase(cleanSearch);
         if (!synonyms.isEmpty()) {
             Synonym s = synonyms.get(0);
             String altWord = s.getTerm().equalsIgnoreCase(cleanSearch) ? s.getSynonym() : s.getTerm();
-            searchAltPattern = "%" + altWord.trim().toLowerCase().replace("-", "").replace(" ", "") + "%";
+            searchAlt = altWord.trim().toLowerCase().replace("-", "").replace(" ", "");
         }
 
         if (categoryId != null) {
-            return productRepository.searchByCategoryAndSearch(categoryId, searchPattern, searchAltPattern, pageable);
+            return productRepository.searchByCategoryAndSearch(categoryId, searchPattern, searchAlt, pageable);
         } else {
-            return productRepository.searchByText(searchPattern, searchAltPattern, pageable);
+            return productRepository.searchByText(searchPattern, searchAlt, pageable);
         }
     }
 
@@ -82,6 +82,9 @@ public class ProductService {
     @CacheEvict(value = "products", key = "#id")
     @Transactional
     public void deleteProduct(Long id) {
+        productRepository.deleteReviewsByProductId(id);
+        productRepository.deleteCartItemsByProductId(id);
+        productRepository.deleteOrderItemsByProductId(id);
         productRepository.deleteById(id);
     }
 
@@ -99,16 +102,16 @@ public class ProductService {
 
         String cleanSearch = search.trim().toLowerCase().replace("-", "").replace(" ", "");
         String searchPattern = "%" + cleanSearch + "%";
-        String searchAltPattern = searchPattern;
+        String searchAlt = cleanSearch;
 
         List<Synonym> synonyms = synonymRepository.findByTermOrSynonymIgnoreCase(cleanSearch);
         if (!synonyms.isEmpty()) {
             Synonym s = synonyms.get(0);
             String altWord = s.getTerm().equalsIgnoreCase(cleanSearch) ? s.getSynonym() : s.getTerm();
-            searchAltPattern = "%" + altWord.trim().toLowerCase().replace("-", "").replace(" ", "") + "%";
+            searchAlt = altWord.trim().toLowerCase().replace("-", "").replace(" ", "");
         }
 
-        return productRepository.findCategoriesBySearchText(searchPattern, searchAltPattern);
+        return productRepository.findCategoriesBySearchText(searchPattern, searchAlt);
     }
 
     @CacheEvict(value = "categories", allEntries = true)

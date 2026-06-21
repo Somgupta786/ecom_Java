@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { 
     TrendingUp, Users, ShoppingCart, AlertCircle, 
-    PlusCircle, Trash2, Edit, Save, PowerOff, Sun, Moon, Upload 
+    PlusCircle, Trash2, Edit, Save, PowerOff, Sun, Moon, Upload, Ticket,
+    ShoppingBag
 } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -26,7 +28,11 @@ export default function AdminDashboard() {
     const [newProduct, setNewProduct] = useState({ name: '', description: '', price: '', sku: '', stock: '', imageUrl: '', categoryId: '' });
     const [editingProduct, setEditingProduct] = useState(null);
     const [newCategoryName, setNewCategoryName] = useState('');
-    const [newCoupon, setNewCoupon] = useState({ code: '', discountPercent: '', expiryDate: '' });
+    const [newCoupon, setNewCoupon] = useState({ code: '', discountPercent: '', maxDiscount: '', expiryDate: '' });
+    const [coupons, setCoupons] = useState([]);
+    const [submittingCoupon, setSubmittingCoupon] = useState(false);
+    const [deletingCouponId, setDeletingCouponId] = useState(null);
+    const [togglingCouponId, setTogglingCouponId] = useState(null);
     const [uploading, setUploading] = useState(false);
 
     // Loading states
@@ -40,30 +46,68 @@ export default function AdminDashboard() {
     const [newSynonym, setNewSynonym] = useState({ term: '', synonym: '' });
     const [submittingSynonym, setSubmittingSynonym] = useState(false);
     const [deletingSynonymId, setDeletingSynonymId] = useState(null);
+    const [initialLoading, setInitialLoading] = useState(true);
 
     const fetchData = async () => {
         try {
-            // Stats
-            const statsRes = await api.get('/admin/dashboard/stats');
+            const [statsRes, prodRes, catRes, orderRes, synRes, coupRes] = await Promise.all([
+                api.get('/admin/dashboard/stats'),
+                api.get('/products?size=100'),
+                api.get('/products/categories'),
+                api.get('/admin/orders'),
+                api.get('/admin/synonyms'),
+                api.get('/admin/coupons')
+            ]);
             setStats(statsRes.data);
-
-            // Products
-            const prodRes = await api.get('/products?size=100');
             setProducts(prodRes.data.content || []);
-
-            // Categories
-            const catRes = await api.get('/products/categories');
             setCategories(catRes.data);
-
-            // Orders
-            const orderRes = await api.get('/admin/orders');
             setOrders(orderRes.data);
+            setSynonyms(synRes.data || []);
+            setCoupons(coupRes.data || []);
+        } catch (err) {
+            console.error('Error fetching admin data', err);
+        } finally {
+            setInitialLoading(false);
+        }
+    };
 
-            // Synonyms
+    const fetchCoupons = async () => {
+        try {
+            const coupRes = await api.get('/admin/coupons');
+            setCoupons(coupRes.data || []);
+        } catch (err) {
+            console.error('Error fetching coupons', err);
+        }
+    };
+
+    const fetchSynonyms = async () => {
+        try {
             const synRes = await api.get('/admin/synonyms');
             setSynonyms(synRes.data || []);
         } catch (err) {
-            console.error('Error fetching admin data', err);
+            console.error('Error fetching synonyms', err);
+        }
+    };
+
+    const fetchCategories = async () => {
+        try {
+            const catRes = await api.get('/products/categories');
+            setCategories(catRes.data);
+        } catch (err) {
+            console.error('Error fetching categories', err);
+        }
+    };
+
+    const fetchOrdersAndStats = async () => {
+        try {
+            const [orderRes, statsRes] = await Promise.all([
+                api.get('/admin/orders'),
+                api.get('/admin/dashboard/stats')
+            ]);
+            setOrders(orderRes.data);
+            setStats(statsRes.data);
+        } catch (err) {
+            console.error('Error fetching orders/stats', err);
         }
     };
 
@@ -75,54 +119,118 @@ export default function AdminDashboard() {
 
     const handleCreateProduct = async (e) => {
         e.preventDefault();
+        
+        // Strict Validation
+        const { name, description, price, sku, stock, imageUrl, categoryId } = newProduct;
+        if (!name || !name.trim()) {
+            showToast('Product name is required.', 'error');
+            return;
+        }
+        if (!sku || !sku.trim()) {
+            showToast('SKU code is required.', 'error');
+            return;
+        }
+        if (!description || !description.trim()) {
+            showToast('Description is required.', 'error');
+            return;
+        }
+        if (!price || isNaN(Number(price)) || Number(price) <= 0) {
+            showToast('Price must be a valid number greater than 0.', 'error');
+            return;
+        }
+        if (stock === '' || isNaN(Number(stock)) || Number(stock) < 0) {
+            showToast('Stock count must be a non-negative number.', 'error');
+            return;
+        }
+        if (!categoryId) {
+            showToast('Please select a category.', 'error');
+            return;
+        }
+        if (!imageUrl || !imageUrl.trim()) {
+            showToast('Product image URL is required. Please input a URL or upload a file.', 'error');
+            return;
+        }
+
         setSubmittingProduct(true);
 
-        const selectedCat = categories.find(c => c.id === Number(newProduct.categoryId));
+        const selectedCat = categories.find(c => c.id === Number(categoryId));
         const payload = {
-            name: newProduct.name,
-            description: newProduct.description,
-            price: Number(newProduct.price),
-            sku: newProduct.sku,
-            stock: Number(newProduct.stock),
-            imageUrl: newProduct.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500',
+            name: name.trim(),
+            description: description.trim(),
+            price: Number(price),
+            sku: sku.trim(),
+            stock: Number(stock),
+            imageUrl: imageUrl.trim(),
             category: selectedCat
         };
 
         try {
             await api.post('/admin/products', payload);
+            setSubmittingProduct(false);
             showToast('Product created successfully!', 'success');
             setNewProduct({ name: '', description: '', price: '', sku: '', stock: '', imageUrl: '', categoryId: '' });
-            await fetchData();
+            fetchData();
         } catch (err) {
-            showToast('Error creating product.', 'error');
-        } finally {
+            showToast(err.response?.data?.message || 'Error creating product.', 'error');
             setSubmittingProduct(false);
         }
     };
 
     const handleUpdateProduct = async (e) => {
         e.preventDefault();
+        
+        // Strict Validation
+        const { id, name, description, price, sku, stock, imageUrl, categoryId } = editingProduct;
+        if (!name || !name.trim()) {
+            showToast('Product name is required.', 'error');
+            return;
+        }
+        if (!sku || !sku.trim()) {
+            showToast('SKU code is required.', 'error');
+            return;
+        }
+        if (!description || !description.trim()) {
+            showToast('Description is required.', 'error');
+            return;
+        }
+        if (!price || isNaN(Number(price)) || Number(price) <= 0) {
+            showToast('Price must be a valid number greater than 0.', 'error');
+            return;
+        }
+        if (stock === '' || isNaN(Number(stock)) || Number(stock) < 0) {
+            showToast('Stock count must be a non-negative number.', 'error');
+            return;
+        }
+        if (!categoryId) {
+            showToast('Please select a category.', 'error');
+            return;
+        }
+        if (!imageUrl || !imageUrl.trim()) {
+            showToast('Product image URL is required. Please input a URL or upload a file.', 'error');
+            return;
+        }
+
         setSubmittingProduct(true);
 
-        const selectedCat = categories.find(c => c.id === Number(editingProduct.categoryId));
+        const selectedCat = categories.find(c => c.id === Number(categoryId));
         const payload = {
-            name: editingProduct.name,
-            description: editingProduct.description,
-            price: Number(editingProduct.price),
-            sku: editingProduct.sku,
-            stock: Number(editingProduct.stock),
-            imageUrl: editingProduct.imageUrl,
+            name: name.trim(),
+            description: description.trim(),
+            price: Number(price),
+            sku: sku.trim(),
+            stock: Number(stock),
+            imageUrl: imageUrl.trim(),
             category: selectedCat
         };
 
         try {
-            await api.put(`/admin/products/${editingProduct.id}`, payload);
+            await api.put(`/admin/products/${id}`, payload);
+            setSubmittingProduct(false);
             showToast('Product updated successfully!', 'success');
             setEditingProduct(null);
-            await fetchData();
+            fetchData();
         } catch (err) {
-            showToast('Error updating product.', 'error');
-        } finally {
+            showToast(err.response?.data?.message || 'Error updating product.', 'error');
             setSubmittingProduct(false);
         }
     };
@@ -133,11 +241,12 @@ export default function AdminDashboard() {
 
         try {
             await api.delete(`/admin/products/${prodId}`);
-            showToast('Product deleted.', 'success');
-            await fetchData();
+            setProducts(prev => prev.filter(p => p.id !== prodId));
+            setDeletingProductId(null);
+            showToast('Product deleted successfully!', 'success');
+            fetchData();
         } catch (err) {
             showToast('Error deleting product.', 'error');
-        } finally {
             setDeletingProductId(null);
         }
     };
@@ -190,13 +299,13 @@ export default function AdminDashboard() {
         setSubmittingCategory(true);
 
         try {
-            await api.post('/admin/categories', { name: newCategoryName });
-            showToast('Category added!', 'success');
+            const res = await api.post('/admin/categories', { name: newCategoryName });
+            setSubmittingCategory(false);
+            showToast('Category added successfully!', 'success');
+            setCategories(prev => [...prev, res.data]);
             setNewCategoryName('');
-            await fetchData();
         } catch (err) {
             showToast('Error adding category.', 'error');
-        } finally {
             setSubmittingCategory(false);
         }
     };
@@ -205,12 +314,13 @@ export default function AdminDashboard() {
         setUpdatingOrderId(orderId);
         try {
             await api.put(`/admin/orders/${orderId}/status?status=${newStatus}`);
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+            setUpdatingOrderId(null);
             showToast('Order status updated successfully.', 'success');
-            await fetchData();
+            fetchOrdersAndStats();
         } catch (err) {
             console.error('Error updating status', err);
             showToast('Error updating status.', 'error');
-        } finally {
             setUpdatingOrderId(null);
         }
     };
@@ -220,16 +330,16 @@ export default function AdminDashboard() {
         if (!newSynonym.term.trim() || !newSynonym.synonym.trim()) return;
         setSubmittingSynonym(true);
         try {
-            await api.post('/admin/synonyms', {
+            const res = await api.post('/admin/synonyms', {
                 term: newSynonym.term.trim().toLowerCase(),
                 synonym: newSynonym.synonym.trim().toLowerCase()
             });
+            setSubmittingSynonym(false);
             showToast('Synonym mapped successfully!', 'success');
+            setSynonyms(prev => [...prev, res.data]);
             setNewSynonym({ term: '', synonym: '' });
-            await fetchData();
         } catch (err) {
             showToast('Error mapping synonym.', 'error');
-        } finally {
             setSubmittingSynonym(false);
         }
     };
@@ -239,12 +349,64 @@ export default function AdminDashboard() {
         setDeletingSynonymId(synId);
         try {
             await api.delete(`/admin/synonyms/${synId}`);
+            setSynonyms(prev => prev.filter(syn => syn.id !== synId));
+            setDeletingSynonymId(null);
             showToast('Synonym mapping deleted.', 'success');
-            await fetchData();
         } catch (err) {
             showToast('Error deleting synonym.', 'error');
-        } finally {
             setDeletingSynonymId(null);
+        }
+    };
+
+    const handleCreateCoupon = async (e) => {
+        e.preventDefault();
+        if (!newCoupon.code.trim() || !newCoupon.discountPercent) return;
+        setSubmittingCoupon(true);
+
+        const payload = {
+            code: newCoupon.code.trim().toUpperCase(),
+            discountPercent: Number(newCoupon.discountPercent),
+            maxDiscount: newCoupon.maxDiscount ? Number(newCoupon.maxDiscount) : null,
+            expiryDate: newCoupon.expiryDate ? new Date(newCoupon.expiryDate).toISOString() : null,
+            isActive: true
+        };
+
+        try {
+            const res = await api.post('/admin/coupons', payload);
+            setSubmittingCoupon(false);
+            showToast('Coupon created successfully!', 'success');
+            setCoupons(prev => [...prev, res.data]);
+            setNewCoupon({ code: '', discountPercent: '', maxDiscount: '', expiryDate: '' });
+        } catch (err) {
+            showToast('Error creating coupon.', 'error');
+            setSubmittingCoupon(false);
+        }
+    };
+
+    const handleDeleteCoupon = async (coupId) => {
+        if (!window.confirm('Are you sure you want to delete this coupon?')) return;
+        setDeletingCouponId(coupId);
+        try {
+            await api.delete(`/admin/coupons/${coupId}`);
+            setCoupons(prev => prev.filter(c => c.id !== coupId));
+            setDeletingCouponId(null);
+            showToast('Coupon deleted.', 'success');
+        } catch (err) {
+            showToast('Error deleting coupon.', 'error');
+            setDeletingCouponId(null);
+        }
+    };
+
+    const handleToggleCoupon = async (coupId) => {
+        setTogglingCouponId(coupId);
+        try {
+            const res = await api.put(`/admin/coupons/${coupId}/toggle`);
+            setCoupons(prev => prev.map(c => c.id === coupId ? res.data : c));
+            setTogglingCouponId(null);
+            showToast('Coupon status updated successfully.', 'success');
+        } catch (err) {
+            showToast('Error updating coupon status.', 'error');
+            setTogglingCouponId(null);
         }
     };
 
@@ -303,9 +465,9 @@ export default function AdminDashboard() {
         <div className="admin-layout">
             
             {/* Sidebar View Switcher */}
-            <div className="admin-sidebar" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)', position: 'sticky', top: '40px' }}>
-                <h3 style={{ fontSize: '18px', marginBottom: '20px', paddingLeft: '8px' }}>Store Admin</h3>
-                <ul className="admin-sidebar-menu" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="admin-sidebar">
+                <h3 className="admin-sidebar-header">Store Admin</h3>
+                <ul className="admin-sidebar-menu">
                     <li onClick={() => setView('analytics')} className={`admin-sidebar-item ${view === 'analytics' ? 'active' : ''}`}>
                         <TrendingUp size={16} />
                         <span>Dashboard</span>
@@ -326,14 +488,18 @@ export default function AdminDashboard() {
                         <Save size={16} />
                         <span>Synonyms</span>
                     </li>
+                    <li onClick={() => setView('coupons')} className={`admin-sidebar-item ${view === 'coupons' ? 'active' : ''}`}>
+                        <Ticket size={16} />
+                        <span>Coupons</span>
+                    </li>
                     
                     {/* Theme Toggle in Admin View */}
-                    <li onClick={toggleTheme} className="admin-sidebar-item" style={{ marginTop: 'auto' }}>
+                    <li onClick={toggleTheme} className="admin-sidebar-item admin-sidebar-theme-toggle">
                         {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
                         <span>Toggle Theme</span>
                     </li>
                     {/* Logout in Admin View */}
-                    <li onClick={logout} className="admin-sidebar-item" style={{ color: 'var(--error)' }}>
+                    <li onClick={logout} className="admin-sidebar-item admin-sidebar-logout">
                         <PowerOff size={16} />
                         <span>Logout</span>
                     </li>
@@ -342,9 +508,15 @@ export default function AdminDashboard() {
 
             {/* Dashboard Content */}
             <div className="admin-content">
-                
-                {/* VIEW 1: Analytics */}
-                {view === 'analytics' && (() => {
+                {initialLoading ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '400px', gap: '16px', color: 'var(--text-muted)' }}>
+                        <div className="spinner animate-spin" style={{ width: '40px', height: '40px', border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '15px', fontWeight: '500' }}>Loading database statistics...</p>
+                    </div>
+                ) : (
+                    <>
+                        {/* VIEW 1: Analytics */}
+                        {view === 'analytics' && (() => {
                     const revenueData = getRevenueChartData();
                     const maxRevenue = Math.max(...revenueData.values, 100);
                     const height = 180;
@@ -917,6 +1089,204 @@ export default function AdminDashboard() {
                             )}
                         </div>
                     </div>
+                )}
+
+                {/* VIEW 6: Coupons Management */}
+                {view === 'coupons' && (
+                    <div>
+                        <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>Coupon Code Management</h2>
+                        
+                        {/* Add Coupon Form */}
+                        <div className="checkout-card" style={{ marginBottom: '24px' }}>
+                            <h3>Create New Coupon</h3>
+                            <form onSubmit={handleCreateCoupon} style={{ marginTop: '16px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                                    <div className="form-group" style={{ margin: 0 }}>
+                                        <label>Coupon Code</label>
+                                        <input 
+                                            type="text" 
+                                            required 
+                                            disabled={submittingCoupon}
+                                            placeholder="WELCOME50" 
+                                            value={newCoupon.code} 
+                                            onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value })} 
+                                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{ margin: 0 }}>
+                                        <label>Discount Percent (%)</label>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            max="100" 
+                                            required 
+                                            disabled={submittingCoupon}
+                                            placeholder="50" 
+                                            value={newCoupon.discountPercent} 
+                                            onChange={(e) => setNewCoupon({ ...newCoupon, discountPercent: e.target.value })} 
+                                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{ margin: 0 }}>
+                                        <label>Max Discount Amount ($) (Optional)</label>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            disabled={submittingCoupon}
+                                            placeholder="100.00" 
+                                            value={newCoupon.maxDiscount} 
+                                            onChange={(e) => setNewCoupon({ ...newCoupon, maxDiscount: e.target.value })} 
+                                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{ margin: 0 }}>
+                                        <label>Expiry Date (Optional)</label>
+                                        <input 
+                                            type="datetime-local" 
+                                            disabled={submittingCoupon}
+                                            value={newCoupon.expiryDate} 
+                                            onChange={(e) => setNewCoupon({ ...newCoupon, expiryDate: e.target.value })} 
+                                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                        />
+                                    </div>
+                                </div>
+                                <button type="submit" className="btn btn-primary" disabled={submittingCoupon}>
+                                    {submittingCoupon ? (
+                                        <>
+                                            <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', marginRight: '6px' }} />
+                                            <span>Creating...</span>
+                                        </>
+                                    ) : 'Create Coupon'}
+                                </button>
+                            </form>
+                        </div>
+                        
+                        {/* List Coupons */}
+                        <div className="checkout-card" style={{ margin: 0, padding: '24px' }}>
+                            <h3>All Coupon Codes ({coupons.length})</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                                {coupons.length === 0 ? (
+                                    <p style={{ color: 'var(--text-muted)' }}>No coupons created yet.</p>
+                                ) : (
+                                    coupons.map((coupon) => {
+                                        const expiryString = coupon.expiryDate 
+                                            ? new Date(coupon.expiryDate).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                            : 'Never';
+                                        
+                                        const isExpired = coupon.expiryDate && new Date(coupon.expiryDate) < new Date();
+                                        const isActive = coupon.active !== undefined ? coupon.active : coupon.isActive;
+                                        
+                                        return (
+                                            <div 
+                                                key={coupon.id} 
+                                                style={{ 
+                                                    display: 'flex', 
+                                                    justifyContent: 'space-between', 
+                                                    alignItems: 'center', 
+                                                    borderBottom: '1px solid var(--border-color)', 
+                                                    paddingBottom: '12px',
+                                                    opacity: isActive && !isExpired ? 1 : 0.6
+                                                }}
+                                            >
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <span 
+                                                            style={{ 
+                                                                fontFamily: 'monospace', 
+                                                                fontSize: '14px', 
+                                                                fontWeight: 'bold', 
+                                                                backgroundColor: 'var(--accent-light)', 
+                                                                color: 'var(--accent)', 
+                                                                padding: '4px 10px', 
+                                                                borderRadius: '6px',
+                                                                letterSpacing: '1px'
+                                                            }}
+                                                        >
+                                                            {coupon.code}
+                                                        </span>
+                                                        <span 
+                                                            style={{ 
+                                                                fontSize: '11px', 
+                                                                fontWeight: 'bold', 
+                                                                color: isExpired ? 'var(--error)' : isActive ? 'var(--success)' : 'var(--text-muted)',
+                                                                backgroundColor: isExpired ? 'rgba(239, 68, 68, 0.1)' : isActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '12px'
+                                                            }}
+                                                        >
+                                                            {isExpired ? 'EXPIRED' : isActive ? 'ACTIVE' : 'INACTIVE'}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                                                        Discount: <strong>{coupon.discountPercent}%</strong> 
+                                                        {coupon.maxDiscount && <> | Max Discount: <strong>${parseFloat(coupon.maxDiscount).toFixed(2)}</strong></>}
+                                                        <span> | Expiration: {expiryString}</span>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                    {/* Activate button */}
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => handleToggleCoupon(coupon.id)} 
+                                                        className="btn btn-primary btn-sm"
+                                                        disabled={isActive || togglingCouponId === coupon.id || deletingCouponId !== null}
+                                                        style={{ 
+                                                            opacity: isActive ? 0.4 : 1, 
+                                                            cursor: isActive ? 'not-allowed' : 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            width: '90px'
+                                                        }}
+                                                    >
+                                                        {togglingCouponId === coupon.id && !isActive ? (
+                                                            <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                                                        ) : 'Activate'}
+                                                    </button>
+
+                                                    {/* Deactivate button */}
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => handleToggleCoupon(coupon.id)} 
+                                                        className="btn btn-secondary btn-sm"
+                                                        disabled={!isActive || togglingCouponId === coupon.id || deletingCouponId !== null}
+                                                        style={{ 
+                                                            opacity: !isActive ? 0.4 : 1, 
+                                                            cursor: !isActive ? 'not-allowed' : 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            width: '100px'
+                                                        }}
+                                                    >
+                                                        {togglingCouponId === coupon.id && isActive ? (
+                                                            <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                                                        ) : 'Deactivate'}
+                                                    </button>
+                                                    
+                                                    {/* Delete button */}
+                                                    <button 
+                                                        onClick={() => handleDeleteCoupon(coupon.id)} 
+                                                        className="btn btn-outline btn-sm"
+                                                        style={{ padding: '6px', color: 'var(--error)', borderColor: 'var(--error)' }}
+                                                        disabled={deletingCouponId !== null || togglingCouponId !== null}
+                                                    >
+                                                        {deletingCouponId === coupon.id ? (
+                                                            <span className="spinner animate-spin" style={{ width: '14px', height: '14px', border: '2px solid var(--error)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                                                        ) : (
+                                                            <Trash2 size={14} />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+                    </>
                 )}
             </div>
         </div>

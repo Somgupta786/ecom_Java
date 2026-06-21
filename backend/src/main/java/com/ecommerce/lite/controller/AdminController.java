@@ -6,11 +6,13 @@ import com.ecommerce.lite.model.Order;
 import com.ecommerce.lite.model.OrderStatus;
 import com.ecommerce.lite.model.Product;
 import com.ecommerce.lite.model.Synonym;
+import com.ecommerce.lite.model.Coupon;
 import com.ecommerce.lite.repository.CategoryRepository;
 import com.ecommerce.lite.repository.OrderRepository;
 import com.ecommerce.lite.repository.ProductRepository;
 import com.ecommerce.lite.repository.UserRepository;
 import com.ecommerce.lite.repository.SynonymRepository;
+import com.ecommerce.lite.repository.CouponRepository;
 import com.ecommerce.lite.service.CloudinaryService;
 import com.ecommerce.lite.service.OrderService;
 import com.ecommerce.lite.service.ProductService;
@@ -32,6 +34,7 @@ public class AdminController {
     private final OrderService orderService;
     private final CloudinaryService cloudinaryService;
     private final SynonymRepository synonymRepository;
+    private final CouponRepository couponRepository;
 
     @GetMapping("/dashboard/stats")
     public ResponseEntity<DashboardStats> getStats() {
@@ -100,5 +103,29 @@ public class AdminController {
     public ResponseEntity<?> deleteSynonym(@PathVariable Long id) {
         synonymRepository.deleteById(id);
         return ResponseEntity.ok("{ \"message\": \"Synonym deleted successfully\" }");
+    }
+
+    @GetMapping("/coupons")
+    public ResponseEntity<List<Coupon>> getAllCoupons() {
+        return ResponseEntity.ok(couponRepository.findAll());
+    }
+
+    @PostMapping("/coupons")
+    public ResponseEntity<Coupon> createCoupon(@RequestBody Coupon coupon) {
+        return ResponseEntity.ok(couponRepository.save(coupon));
+    }
+
+    @DeleteMapping("/coupons/{id}")
+    public ResponseEntity<?> deleteCoupon(@PathVariable Long id) {
+        couponRepository.deleteById(id);
+        return ResponseEntity.ok("{ \"message\": \"Coupon deleted successfully\" }");
+    }
+
+    @PutMapping("/coupons/{id}/toggle")
+    public ResponseEntity<Coupon> toggleCoupon(@PathVariable Long id) {
+        Coupon coupon = couponRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Coupon not found"));
+        coupon.setActive(!coupon.isActive());
+        return ResponseEntity.ok(couponRepository.save(coupon));
     }
 }

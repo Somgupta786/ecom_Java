@@ -332,4 +332,16 @@ public class OrderService {
         sb.append("</div></body></html>");
         return sb.toString();
     }
+
+    public List<Coupon> getActiveCoupons() {
+        List<Coupon> activeCoupons = couponRepository.findByIsActiveTrue();
+        List<Coupon> validCoupons = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        for (Coupon coupon : activeCoupons) {
+            if (coupon.getExpiryDate() == null || coupon.getExpiryDate().isAfter(now)) {
+                validCoupons.add(coupon);
+            }
+        }
+        return validCoupons;
+    }
 }

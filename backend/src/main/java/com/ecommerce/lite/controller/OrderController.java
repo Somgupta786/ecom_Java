@@ -2,6 +2,7 @@ package com.ecommerce.lite.controller;
 
 import com.ecommerce.lite.dto.CheckoutRequest;
 import com.ecommerce.lite.model.Order;
+import com.ecommerce.lite.model.Coupon;
 import com.ecommerce.lite.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,11 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<Order> placeOrder(Principal principal, @Valid @RequestBody CheckoutRequest request) {
         return ResponseEntity.ok(orderService.placeOrder(principal.getName(), request));
+    }
+
+    @GetMapping("/coupons")
+    public ResponseEntity<List<Coupon>> getCoupons() {
+        return ResponseEntity.ok(orderService.getActiveCoupons());
     }
 
     @GetMapping("/history")

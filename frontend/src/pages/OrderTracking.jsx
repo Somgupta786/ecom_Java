@@ -90,8 +90,13 @@ export default function OrderTracking() {
                         />
                         {!trackingNumber && <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />}
                     </div>
-                    <button type="submit" className="btn btn-primary" style={{ padding: '0 28px', height: '48px' }} disabled={loading}>
-                        {loading ? 'Searching...' : 'Track Package'}
+                    <button type="submit" className="btn btn-primary" style={{ padding: '0 28px', height: '48px', display: 'flex', alignItems: 'center', gap: '8px' }} disabled={loading}>
+                        {loading ? (
+                            <>
+                                <span className="spinner animate-spin" style={{ width: '16px', height: '16px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                                <span>Searching...</span>
+                            </>
+                        ) : 'Track Package'}
                     </button>
                 </form>
             </div>

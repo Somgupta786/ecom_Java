@@ -5,11 +5,12 @@ import com.ecommerce.lite.model.Address;
 import com.ecommerce.lite.model.User;
 import com.ecommerce.lite.repository.UserRepository;
 import com.ecommerce.lite.service.AuthService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 
@@ -30,18 +31,42 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request));
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request, HttpServletResponse response) {
+        AuthResponse authResponse = authService.register(request);
+        setRefreshTokenCookie(response, authResponse.getRefreshToken());
+        authResponse.setRefreshToken("");
+        return ResponseEntity.ok(authResponse);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+        AuthResponse authResponse = authService.login(request);
+        setRefreshTokenCookie(response, authResponse.getRefreshToken());
+        authResponse.setRefreshToken("");
+        return ResponseEntity.ok(authResponse);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<TokenRefreshResponse> refresh(@Valid @RequestBody TokenRefreshRequest request) {
-        return ResponseEntity.ok(authService.refresh(request));
+    public ResponseEntity<?> refresh(@CookieValue(name = "refreshToken", required = false) String refreshToken, HttpServletResponse response) {
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            return ResponseEntity.status(401).body("{ \"error\": \"Refresh token cookie missing\" }");
+        }
+        try {
+            TokenRefreshRequest request = new TokenRefreshRequest();
+            request.setRefreshToken(refreshToken);
+            TokenRefreshResponse refreshResponse = authService.refresh(request);
+            
+            setRefreshTokenCookie(response, refreshResponse.getRefreshToken());
+            return ResponseEntity.ok(new TokenRefreshResponse(refreshResponse.getAccessToken(), ""));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body("{ \"error\": \"" + e.getMessage() + "\" }");
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        clearRefreshTokenCookie(response);
+        return ResponseEntity.ok().body("{ \"message\": \"Logged out successfully\" }");
     }
 
     @GetMapping("/me")
@@ -63,5 +88,27 @@ public class AuthController {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         user.getAddresses().add(address);
         return ResponseEntity.ok(userRepository.save(user));
+    }
+
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(false) // Set to true in production with HTTPS, but false is safe for local HTTP
+                .path("/")
+                .maxAge(7 * 24 * 60 * 60) // 7 days matching JWT expiration
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearRefreshTokenCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0) // immediately delete
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }

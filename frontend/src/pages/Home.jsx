@@ -37,11 +37,15 @@ export default function Home({ searchFilter }) {
     const [dir, setDir] = useState('desc');
     const [loading, setLoading] = useState(true);
 
-    // Fetch categories once on mount
+    // Fetch categories when search filter changes
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const res = await api.get('/products/categories');
+                let path = '/products/categories';
+                if (searchFilter) {
+                    path += `?search=${encodeURIComponent(searchFilter)}`;
+                }
+                const res = await api.get(path);
                 setCategories(res.data);
             } catch (err) {
                 console.error('Error fetching categories', err);
@@ -49,7 +53,7 @@ export default function Home({ searchFilter }) {
         };
 
         fetchCategories();
-    }, []);
+    }, [searchFilter]);
 
     // Fetch recommendations on mount
     useEffect(() => {
@@ -123,8 +127,8 @@ export default function Home({ searchFilter }) {
     // Infinite Scroll event listener
     useEffect(() => {
         const handleScroll = () => {
-            // Check if user is scrolled within 150px of the page bottom
-            if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 150) {
+            // Check if user is scrolled within 700px of the page bottom to trigger load early (accounts for bottom recommendations)
+            if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 700) {
                 if (!loading && page < totalPages - 1) {
                     setPage(prev => prev + 1);
                 }
@@ -140,13 +144,15 @@ export default function Home({ searchFilter }) {
     };
 
     const [activeSlide, setActiveSlide] = useState(0);
+    const [isHovered, setIsHovered] = useState(false);
 
     useEffect(() => {
+        if (isHovered) return;
         const interval = setInterval(() => {
             setActiveSlide(prev => (prev + 1) % slides.length);
         }, 1500);
         return () => clearInterval(interval);
-    }, []);
+    }, [isHovered]);
 
     const handlePrevSlide = (e) => {
         e.stopPropagation();
@@ -168,7 +174,11 @@ export default function Home({ searchFilter }) {
     return (
         <div className="home-container">
             {/* Hero Carousel */}
-            <div className="hero-carousel">
+            <div 
+                className="hero-carousel"
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
                 <div className="carousel-slides">
                     {slides.map((slide, idx) => (
                         <div 
@@ -209,21 +219,6 @@ export default function Home({ searchFilter }) {
                 </div>
             </div>
 
-            {/* Recommendations Section */}
-            {recommendations.length > 0 && (
-                <div style={{ marginBottom: '48px' }}>
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '22px', marginBottom: '20px' }}>
-                        <Sparkles size={20} color="var(--accent)" />
-                        <span>Recommended for You</span>
-                    </h2>
-                    <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-                        {recommendations.map(prod => (
-                            <ProductCard key={prod.id} product={prod} />
-                        ))}
-                    </div>
-                </div>
-            )}
-
             {/* Main Catalog Header */}
             <div id="collection-section" className="products-section-title">
                 <h2>Our Collection</h2>
@@ -251,17 +246,19 @@ export default function Home({ searchFilter }) {
 
             {/* Categories Selector */}
             <div className="category-container">
-                <button 
-                    onClick={() => setSelectedCategory(null)}
-                    className={`category-bubble ${selectedCategory === null ? 'active' : ''}`}
-                >
-                    All Products
-                </button>
+                {categories.length > 1 && (
+                    <button 
+                        onClick={() => setSelectedCategory(null)}
+                        className={`category-bubble ${selectedCategory === null ? 'active' : ''}`}
+                    >
+                        All Products
+                    </button>
+                )}
                 {categories.map(cat => (
                     <button 
                         key={cat.id}
                         onClick={() => handleCategoryClick(cat.id)}
-                        className={`category-bubble ${selectedCategory === cat.id ? 'active' : ''}`}
+                        className={`category-bubble ${selectedCategory === cat.id || categories.length === 1 ? 'active' : ''}`}
                     >
                         {cat.name}
                     </button>
@@ -270,8 +267,9 @@ export default function Home({ searchFilter }) {
 
             {/* Products Listing */}
             {page === 0 && loading ? (
-                <div style={{ textAlign: 'center', padding: '60px 0', fontSize: '18px', color: 'var(--text-muted)' }}>
-                    Loading premium catalog...
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '60px 0', gap: '16px', color: 'var(--text-muted)' }}>
+                    <div className="spinner animate-spin" style={{ width: '40px', height: '40px', border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                    <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '16px', fontWeight: '500' }}>Loading premium catalog...</p>
                 </div>
             ) : products.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px 0', fontSize: '18px', color: 'var(--text-muted)' }}>
@@ -287,8 +285,9 @@ export default function Home({ searchFilter }) {
 
                     {/* Small loader at bottom when fetching more pages */}
                     {page > 0 && loading && (
-                        <div style={{ textAlign: 'center', padding: '24px 0', fontSize: '14px', color: 'var(--text-muted)' }}>
-                            Loading more products...
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', padding: '24px 0', color: 'var(--text-muted)' }}>
+                            <div className="spinner animate-spin" style={{ width: '20px', height: '20px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                            <span style={{ fontSize: '14px' }}>Loading more products...</span>
                         </div>
                     )}
 
@@ -299,6 +298,21 @@ export default function Home({ searchFilter }) {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Recommendations Section */}
+            {recommendations.length > 0 && (
+                <div style={{ marginTop: '64px', marginBottom: '24px' }}>
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '22px', marginBottom: '20px' }}>
+                        <Sparkles size={20} color="var(--accent)" />
+                        <span>Recommended for You</span>
+                    </h2>
+                    <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+                        {recommendations.map(prod => (
+                            <ProductCard key={prod.id} product={prod} />
+                        ))}
+                    </div>
+                </div>
             )}
         </div>
     );

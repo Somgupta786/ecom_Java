@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { User, ShieldCheck } from 'lucide-react';
 
 export default function Login() {
     const { login } = useAuth();
@@ -128,6 +129,37 @@ export default function Login() {
             <p style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)' }}>
                 New to E-Commerce Lite? <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 'bold' }}>Create Account</Link>
             </p>
+            
+            {/* Quick Demo Access */}
+            <div className="demo-credentials-container">
+                <div className="demo-title">Quick Demo Login</div>
+                <div className="demo-buttons-grid">
+                    <button 
+                        type="button" 
+                        className="demo-btn user-demo-btn" 
+                        onClick={() => {
+                            setEmail('user@ecommerce.com');
+                            setPassword('user123');
+                            setTouched({ email: true, password: true });
+                        }}
+                    >
+                        <User size={16} />
+                        <span>User Demo</span>
+                    </button>
+                    <button 
+                        type="button" 
+                        className="demo-btn admin-demo-btn" 
+                        onClick={() => {
+                            setEmail('admin@ecommerce.com');
+                            setPassword('admin123');
+                            setTouched({ email: true, password: true });
+                        }}
+                    >
+                        <ShieldCheck size={16} />
+                        <span>Admin Demo</span>
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

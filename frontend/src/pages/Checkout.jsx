@@ -39,6 +39,8 @@ export default function Checkout() {
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [couponError, setCouponError] = useState('');
     const [usePoints, setUsePoints] = useState(false);
+    const [availableCoupons, setAvailableCoupons] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Payment state
     const [cardName, setCardName] = useState('');
@@ -61,18 +63,32 @@ export default function Checkout() {
         }
     }, [token, cartItems]);
 
-    // Apply Coupon handler (local simulation matching backend logic)
+    useEffect(() => {
+        const fetchCoupons = async () => {
+            try {
+                const res = await api.get('/orders/coupons');
+                setAvailableCoupons(res.data);
+            } catch (err) {
+                console.error("Failed to fetch coupons:", err);
+            }
+        };
+        if (token) {
+            fetchCoupons();
+        }
+    }, [token]);
+
+    // Apply Coupon handler (validating against backend active coupons)
     const handleApplyCoupon = async () => {
         setCouponError('');
         if (!couponCode.trim()) return;
 
         setApplyingCoupon(true);
         setTimeout(() => {
-            if (couponCode.trim().toUpperCase() === 'SALETIME10') {
-                setAppliedCoupon({
-                    code: 'SALETIME10',
-                    percent: 10
-                });
+            const found = availableCoupons.find(
+                c => c.code.trim().toUpperCase() === couponCode.trim().toUpperCase()
+            );
+            if (found) {
+                setAppliedCoupon(found);
                 showToast('Promo code applied successfully!', 'success');
             } else {
                 setCouponError('Invalid promo code');
@@ -83,10 +99,28 @@ export default function Checkout() {
         }, 500);
     };
 
+    const handleSelectCoupon = (coupon) => {
+        setAppliedCoupon(coupon);
+        setCouponCode(coupon.code);
+        setCouponError('');
+        setIsModalOpen(false);
+        showToast(`Promo code ${coupon.code} applied!`, 'success');
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponCode('');
+        setCouponError('');
+        showToast('Promo code removed', 'info');
+    };
+
     // Calculate totals matching backend formulas
     const subtotal = getCartTotal();
     const couponDiscount = appliedCoupon 
-        ? subtotal * (appliedCoupon.percent / 100) 
+        ? Math.min(
+            subtotal * (appliedCoupon.discountPercent / 100), 
+            appliedCoupon.maxDiscount ? parseFloat(appliedCoupon.maxDiscount) : Infinity
+          )
         : 0;
     
     // Points calculation: 10 points = $1 discount
@@ -440,7 +474,7 @@ export default function Checkout() {
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <input 
                                     type="text" 
-                                    placeholder="SALETIME10" 
+                                    placeholder="e.g. WELCOME50" 
                                     value={couponCode} 
                                     disabled={applyingCoupon || paymentProcessing}
                                     onChange={(e) => setCouponCode(e.target.value)}
@@ -450,8 +484,40 @@ export default function Checkout() {
                                     {applyingCoupon ? 'Checking...' : 'Apply'}
                                 </button>
                             </div>
+                            <button 
+                                type="button" 
+                                onClick={() => setIsModalOpen(true)} 
+                                style={{ 
+                                    background: 'none', 
+                                    border: 'none', 
+                                    color: 'var(--accent)', 
+                                    fontSize: '12px', 
+                                    fontWeight: '600', 
+                                    cursor: 'pointer', 
+                                    marginTop: '8px', 
+                                    padding: 0,
+                                    textAlign: 'left',
+                                    display: 'block',
+                                    textDecoration: 'underline'
+                                }}
+                            >
+                                View Available Coupons
+                            </button>
                             {couponError && <span style={{ color: 'var(--error)', fontSize: '11px', fontWeight: 'bold', display: 'block', marginTop: '4px' }}>{couponError}</span>}
-                            {appliedCoupon && <span style={{ color: 'var(--success)', fontSize: '11px', fontWeight: 'bold', display: 'block', marginTop: '4px' }}>✓ Coupon Applied: {appliedCoupon.code} ({appliedCoupon.percent}% off)</span>}
+                            {appliedCoupon && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', padding: '6px 10px', backgroundColor: 'var(--accent-light)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                                    <span style={{ color: 'var(--success)', fontSize: '12px', fontWeight: 'bold' }}>
+                                        ✓ {appliedCoupon.code} ({appliedCoupon.discountPercent}% off)
+                                    </span>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleRemoveCoupon} 
+                                        style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Points Redemption */}
@@ -536,6 +602,67 @@ export default function Checkout() {
                         <button onClick={() => navigate('/')} className="btn btn-primary" style={{ flex: 1 }}>
                             Return Storefront
                         </button>
+                    </div>
+                </div>
+            )}
+            {/* Available Coupons Modal */}
+            {isModalOpen && (
+                <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+                    <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Available Coupons</h3>
+                            <button className="modal-close-btn" onClick={() => setIsModalOpen(false)}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            {availableCoupons.length === 0 ? (
+                                <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px 0' }}>No active coupons available at the moment.</p>
+                            ) : (
+                                availableCoupons.map((coupon) => {
+                                    const isSelected = appliedCoupon?.id === coupon.id;
+                                    const expiryString = coupon.expiryDate 
+                                        ? new Date(coupon.expiryDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                                        : 'Never';
+                                    return (
+                                        <div 
+                                            key={coupon.id} 
+                                            className={`coupon-list-item ${isSelected ? 'selected' : ''}`}
+                                            onClick={() => handleSelectCoupon(coupon)}
+                                            onDoubleClick={() => handleSelectCoupon(coupon)}
+                                        >
+                                            <div className="coupon-badge">{coupon.code}</div>
+                                            <div className="coupon-details">
+                                                <div className="coupon-info">
+                                                    <h4>{coupon.discountPercent}% Off</h4>
+                                                    {coupon.maxDiscount && (
+                                                        <p>Max discount up to ${parseFloat(coupon.maxDiscount).toFixed(2)}</p>
+                                                    )}
+                                                    <p style={{ marginTop: '4px' }}>Expires: {expiryString}</p>
+                                                </div>
+                                                <button 
+                                                    type="button" 
+                                                    className="coupon-action-btn"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (isSelected) {
+                                                            handleRemoveCoupon();
+                                                        } else {
+                                                            handleSelectCoupon(coupon);
+                                                        }
+                                                    }}
+                                                >
+                                                    {isSelected ? 'Applied' : 'Apply'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

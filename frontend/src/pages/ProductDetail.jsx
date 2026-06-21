@@ -110,7 +110,12 @@ export default function ProductDetail() {
     };
 
     if (loading) {
-        return <div style={{ textAlign: 'center', padding: '100px 0', fontSize: '18px', color: 'var(--text-muted)' }}>Loading premium details...</div>;
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '400px', gap: '16px', color: 'var(--text-muted)' }}>
+                <div className="spinner animate-spin" style={{ width: '40px', height: '40px', border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '16px', fontWeight: '500' }}>Loading premium details...</p>
+            </div>
+        );
     }
 
     if (!product) {

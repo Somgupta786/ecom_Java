@@ -455,15 +455,41 @@ public class DataInitializer implements CommandLineRunner {
             productRepository.saveAll(newProds);
         }
 
-        // 3. Seed Default Coupon
+        // 3. Seed Default Coupons
         if (couponRepository.findByCodeIgnoreCase("SALETIME10").isEmpty()) {
-            Coupon welcomeCoupon = Coupon.builder()
+            couponRepository.save(Coupon.builder()
                     .code("SALETIME10")
                     .discountPercent(10)
                     .isActive(true)
                     .expiryDate(LocalDateTime.now().plusMonths(3))
-                    .build();
-            couponRepository.save(welcomeCoupon);
+                    .build());
+        }
+        if (couponRepository.findByCodeIgnoreCase("WELCOME50").isEmpty()) {
+            couponRepository.save(Coupon.builder()
+                    .code("WELCOME50")
+                    .discountPercent(50)
+                    .maxDiscount(new java.math.BigDecimal("100.00"))
+                    .isActive(true)
+                    .expiryDate(LocalDateTime.now().plusMonths(6))
+                    .build());
+        }
+        if (couponRepository.findByCodeIgnoreCase("SUMMER20").isEmpty()) {
+            couponRepository.save(Coupon.builder()
+                    .code("SUMMER20")
+                    .discountPercent(20)
+                    .maxDiscount(new java.math.BigDecimal("30.00"))
+                    .isActive(true)
+                    .expiryDate(LocalDateTime.now().plusMonths(2))
+                    .build());
+        }
+        if (couponRepository.findByCodeIgnoreCase("VIP30").isEmpty()) {
+            couponRepository.save(Coupon.builder()
+                    .code("VIP30")
+                    .discountPercent(30)
+                    .maxDiscount(new java.math.BigDecimal("50.00"))
+                    .isActive(true)
+                    .expiryDate(LocalDateTime.now().plusMonths(3))
+                    .build());
         }
 
         // 4. Seed Dummy T-Shirt and Tee products for strict synonym search testing
